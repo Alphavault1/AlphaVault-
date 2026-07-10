@@ -51,6 +51,27 @@ export function Navbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
+  // Lock background scroll while the mobile menu is open. We pin the body with
+  // position:fixed (and restore the scroll offset on close) rather than
+  // `overflow:hidden`, because iOS Safari / iOS Chrome ignore overflow:hidden on
+  // the body and would let the page scroll behind the menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const scrollY = window.scrollY;
+    const { style } = document.body;
+    style.position = "fixed";
+    style.top = `-${scrollY}px`;
+    style.left = "0";
+    style.right = "0";
+    return () => {
+      style.position = "";
+      style.top = "";
+      style.left = "";
+      style.right = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [menuOpen]);
+
   // Close the mobile menu after any navigation so it never lingers over content.
   const closeMenu = () => setMenuOpen(false);
 
