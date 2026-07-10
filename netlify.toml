@@ -1,0 +1,14 @@
+# Netlify configuration for the Alpha Vault landing page.
+#
+# Next.js is auto-detected on Netlify and its runtime (adapter) is installed
+# automatically — you normally don't need to configure anything. This file just
+# makes the build explicit and pins the Node version so local and CI builds
+# match. Per Netlify's guidance we do NOT pin the adapter version; Netlify keeps
+# it up to date on each build.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"

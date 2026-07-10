@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Base layer: sensible defaults tuned for the dark theme. We set the page
+  background and default body colour once here so no component has to repeat it.
+*/
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    /* Smooth-scroll for in-page anchor CTAs (e.g. "Enter the Vault"). */
+    scroll-behavior: smooth;
+    /* Prevent iOS from auto-inflating text sizes on orientation change. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-ink text-slate font-body antialiased;
+    /* Kill the horizontal scrollbar that wide hero glows can otherwise cause. */
+    overflow-x: hidden;
+  }
+
+  /* Uppercase display headings should never look cramped or over-tracked. */
+  h1, h2, h3 {
+    @apply font-display text-white;
+  }
+
+  /* Gold text-selection reinforces the brand without being loud. */
+  ::selection {
+    background: rgba(212, 175, 55, 0.25);
+    color: #ffffff;
+  }
+
+  /*
+    Visible, keyboard-only focus ring. We intentionally use :focus-visible so
+    mouse users don't see rings, but keyboard users always get a clear anchor.
+  */
+  :focus-visible {
+    outline: 2px solid #d4af37;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /*
+    Respect the OS "reduce motion" setting globally. Any component that opts
+    into motion also checks this via Framer Motion's useReducedMotion hook, but
+    this is the safety net for CSS-driven animation and smooth scroll.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+    Shared container: one place to control the page's max width and gutters so
+    every section lines up on the same vertical rhythm.
+  */
+  .container-vault {
+    @apply mx-auto w-full max-w-6xl px-6 md:px-8;
+  }
+
+  /*
+    Anchored sections need a scroll offset so the sticky navbar doesn't cover
+    their headings when a CTA jumps to them.
+  */
+  .anchor-offset {
+    scroll-margin-top: 6rem;
+  }
+}
