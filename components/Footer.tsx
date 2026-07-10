@@ -6,7 +6,8 @@
  * presentational.
  */
 
-import { SOCIAL_LINKS, ENTER_VAULT_ANCHOR } from "@/lib/content";
+import Link from "next/link";
+import { SOCIAL_LINKS, APPLY_PATH } from "@/lib/content";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -26,12 +27,12 @@ export function Footer() {
               <span className="text-gold">Prepare for the next Purge Day.</span>
             </h2>
           </div>
-          <a
-            href={ENTER_VAULT_ANCHOR}
+          <Link
+            href={APPLY_PATH}
             className="inline-flex shrink-0 items-center rounded-full bg-gold px-7 py-3.5 font-body text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
           >
             Enter the Vault
-          </a>
+          </Link>
         </div>
 
         {/* Utility row */}

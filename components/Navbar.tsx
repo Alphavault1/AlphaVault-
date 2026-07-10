@@ -23,9 +23,10 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { NAV_LINKS, ENTER_VAULT_ANCHOR } from "@/lib/content";
+import { NAV_LINKS, APPLY_PATH } from "@/lib/content";
 import vaultMark from "@/public/vault-mark.png";
 
 export function Navbar() {
@@ -117,12 +118,12 @@ export function Navbar() {
                 {link.label}
               </a>
             ))}
-            <a
-              href={ENTER_VAULT_ANCHOR}
+            <Link
+              href={APPLY_PATH}
               className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
             >
               Enter the Vault
-            </a>
+            </Link>
           </div>
 
           {/* Mobile trigger */}
@@ -162,13 +163,13 @@ export function Navbar() {
                     {link.label}
                   </a>
                 ))}
-                <a
-                  href={ENTER_VAULT_ANCHOR}
+                <Link
+                  href={APPLY_PATH}
                   onClick={closeMenu}
                   className="mt-2 rounded-full bg-gold px-5 py-3 text-center text-sm font-medium text-black"
                 >
                   Enter the Vault
-                </a>
+                </Link>
               </div>
             </motion.div>
           )}

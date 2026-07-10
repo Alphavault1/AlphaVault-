@@ -17,10 +17,11 @@
  */
 
 import Image from "next/image";
+import Link from "next/link";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ArrowRight, Send } from "lucide-react";
 import { SectionLabel } from "@/components/ui/SectionLabel";
-import { ENTER_VAULT_ANCHOR, TELEGRAM_URL } from "@/lib/content";
+import { APPLY_PATH, TELEGRAM_URL } from "@/lib/content";
 import vaultMark from "@/public/vault-mark.png";
 
 export function Hero() {
@@ -75,8 +76,8 @@ export function Hero() {
           </motion.p>
 
           <motion.div variants={item} className="mt-10 flex flex-col gap-4 sm:flex-row">
-            <a
-              href={ENTER_VAULT_ANCHOR}
+            <Link
+              href={APPLY_PATH}
               className="group inline-flex items-center justify-center gap-2 rounded-full bg-gold px-7 py-3.5 font-body text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
             >
               Enter the Vault
@@ -84,7 +85,7 @@ export function Hero() {
                 size={16}
                 className="transition-transform group-hover:translate-x-0.5"
               />
-            </a>
+            </Link>
             <a
               href={TELEGRAM_URL}
               target="_blank"

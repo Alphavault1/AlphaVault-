@@ -151,6 +151,11 @@ export const SOCIAL_LINKS: readonly SocialLink[] = [
   { label: "Telegram", href: "https://telegram.org" },
 ] as const;
 
-/** Primary CTA target used by both the navbar and hero buttons. */
-export const ENTER_VAULT_ANCHOR = "#gating";
+/**
+ * Primary CTA target. "Enter the Vault" now leads to the real application form
+ * at /apply (Phase 1), not just the on-page gating explainer. The "Gating
+ * Mechanism" nav link still points at the #gating section, so the two are now
+ * genuinely distinct destinations.
+ */
+export const APPLY_PATH = "/apply";
 export const TELEGRAM_URL = "https://telegram.org";
