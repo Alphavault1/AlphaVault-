@@ -147,7 +147,7 @@ export interface SocialLink {
 }
 
 export const SOCIAL_LINKS: readonly SocialLink[] = [
-  { label: "X", href: "https://x.com" },
+  { label: "X", href: "https://x.com/_alphavault" },
   { label: "Telegram", href: "https://t.me/+CR_tipU_44c0ZGFk" },
 ] as const;
 
