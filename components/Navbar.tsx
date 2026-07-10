@@ -11,11 +11,14 @@
  *   3. A full-screen blurred scrim behind the open mobile menu that dims/blurs
  *      the page and doubles as the tap-anywhere-to-close target.
  *
- * Layering note: the scrim needs to sit ABOVE the page (so its backdrop blur
- * frosts the content) but BELOW the nav row and the menu panel (so the
- * hamburger and links stay crisp and clickable). We do that with explicit
- * z-index — scrim at z-40, nav row and menu panel at z-50 — rather than relying
- * on DOM order.
+ * IMPORTANT layering detail: the scrim is rendered as a SIBLING of <header>,
+ * NOT inside it. The header has `backdrop-blur`, and any ancestor with
+ * backdrop-filter/filter/transform becomes the containing block for
+ * `position: fixed` descendants — which would shrink a `fixed inset-0` scrim
+ * down to the header's little bar instead of the viewport, and also stop its
+ * blur from seeing the page. Keeping the scrim outside the header makes it
+ * viewport-sized and lets its backdrop blur work. z-index: page < scrim (40) <
+ * header + menu (50).
  */
 
 import { useEffect, useState } from "react";
@@ -52,73 +55,108 @@ export function Navbar() {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-        scrolled
-          ? "border-b border-white/10 bg-black/60 backdrop-blur-xl"
-          : "border-b border-white/5 bg-black/40 backdrop-blur-md"
-      }`}
-    >
-      {/* Nav row — kept above the scrim (z-50) so it stays crisp and tappable. */}
-      <nav className="container-vault relative z-50 flex h-16 items-center justify-between">
-        {/* Wordmark */}
-        <a
-          href="#top"
-          onClick={closeMenu}
-          className="flex items-center gap-2.5"
-          aria-label="Alpha Vault — back to top"
-        >
-          <Image
-            src={vaultMark}
-            alt=""
-            aria-hidden
-            width={32}
-            height={32}
-            className="h-8 w-8 object-contain"
-          />
-          <span className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-white">
-            Alpha Vault
-          </span>
-        </a>
-
-        {/* Desktop links */}
-        <div className="hidden items-center gap-8 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-sm text-slate transition-colors hover:text-white"
-            >
-              {link.label}
-            </a>
-          ))}
+    <>
+      <header
+        className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
+          scrolled
+            ? "border-b border-white/10 bg-black/60 backdrop-blur-xl"
+            : "border-b border-white/5 bg-black/40 backdrop-blur-md"
+        }`}
+      >
+        {/* Nav row — above the scrim (header is z-50) so it stays crisp/tappable. */}
+        <nav className="container-vault flex h-16 items-center justify-between">
+          {/* Wordmark */}
           <a
-            href={ENTER_VAULT_ANCHOR}
-            className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
+            href="#top"
+            onClick={closeMenu}
+            className="flex items-center gap-2.5"
+            aria-label="Alpha Vault — back to top"
           >
-            Enter the Vault
+            <Image
+              src={vaultMark}
+              alt=""
+              aria-hidden
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+            />
+            <span className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-white">
+              Alpha Vault
+            </span>
           </a>
-        </div>
 
-        {/* Mobile trigger */}
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className="flex h-9 w-9 items-center justify-center rounded-md text-white md:hidden"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-menu"
-        >
-          {menuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
-      </nav>
+          {/* Desktop links */}
+          <div className="hidden items-center gap-8 md:flex">
+            {NAV_LINKS.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-sm text-slate transition-colors hover:text-white"
+              >
+                {link.label}
+              </a>
+            ))}
+            <a
+              href={ENTER_VAULT_ANCHOR}
+              className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
+            >
+              Enter the Vault
+            </a>
+          </div>
 
+          {/* Mobile trigger */}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-white md:hidden"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </nav>
+
+        {/* Mobile menu panel — stays inside the header, dropping under the nav
+            row. Its own bg is nearly opaque so it reads fine regardless. */}
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              key="menu"
+              id="mobile-menu"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeInOut" }}
+              className="overflow-hidden border-t border-white/5 bg-black/90 backdrop-blur-xl md:hidden"
+            >
+              <div className="container-vault flex flex-col gap-1 py-4">
+                {NAV_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMenu}
+                    className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                <a
+                  href={ENTER_VAULT_ANCHOR}
+                  onClick={closeMenu}
+                  className="mt-2 rounded-full bg-gold px-5 py-3 text-center text-sm font-medium text-black"
+                >
+                  Enter the Vault
+                </a>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
+      {/* Scrim — deliberately a SIBLING of <header> (see file header comment).
+          Full-screen dim + blur, and the tap-anywhere-to-close target. */}
       <AnimatePresence>
-        {/* Full-screen blurred scrim: frosts the page behind the menu and is
-            itself the tap-anywhere-to-close target. Sits at z-40 — above the
-            page, below the nav row and menu panel. Kept as its own direct child
-            of AnimatePresence (not wrapped in a fragment) so its exit animation
-            is tracked. */}
         {menuOpen && (
           <motion.div
             key="scrim"
@@ -131,40 +169,7 @@ export function Navbar() {
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-md md:hidden"
           />
         )}
-
-        {/* Mobile menu panel — above the scrim (z-50). */}
-        {menuOpen && (
-          <motion.div
-            key="menu"
-            id="mobile-menu"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.25, ease: "easeInOut" }}
-            className="relative z-50 overflow-hidden border-t border-white/5 bg-black/80 backdrop-blur-xl md:hidden"
-          >
-            <div className="container-vault flex flex-col gap-1 py-4">
-              {NAV_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  onClick={closeMenu}
-                  className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  {link.label}
-                </a>
-              ))}
-              <a
-                href={ENTER_VAULT_ANCHOR}
-                onClick={closeMenu}
-                className="mt-2 rounded-full bg-gold px-5 py-3 text-center text-sm font-medium text-black"
-              >
-                Enter the Vault
-              </a>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
-    </header>
+    </>
   );
 }
