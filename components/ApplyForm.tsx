@@ -13,15 +13,14 @@
  */
 
 import { useRef, useState } from "react";
-import Link from "next/link";
-import { ArrowRight, Check, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import {
   APPLICANT_ROLES,
   LIMITS,
   applicationSchema,
   type ApplicantRole,
 } from "@/lib/applicationSchema";
-import { TELEGRAM_URL } from "@/lib/content";
+import { ApplySuccessModal } from "@/components/ApplySuccessModal";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -114,44 +113,10 @@ export function ApplyForm() {
     }
   }
 
-  // ---- Success state ------------------------------------------------------
-  if (status === "success") {
-    return (
-      <div className="rounded-2xl border border-gold/25 bg-surface-900 p-8 text-center sm:p-10">
-        <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-gold/40 text-gold">
-          <Check size={26} strokeWidth={2} />
-        </span>
-        <h2 className="mt-6 text-2xl uppercase leading-tight sm:text-3xl">
-          You&rsquo;re in the queue.
-        </h2>
-        <p className="mx-auto mt-4 max-w-md font-body leading-relaxed text-slate">
-          We review every application by hand. If your work checks out, your
-          invite goes out on the next Purge Day — the last day of the month. Keep
-          an eye on your Discord DMs.
-        </p>
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a
-            href={TELEGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-3 font-body text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
-          >
-            Stay on the Radar
-          </a>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 font-body text-sm font-medium text-white transition-colors hover:border-white/30 hover:bg-white/5"
-          >
-            Back to home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ---- Form ---------------------------------------------------------------
+  // ---- Form (always mounted; the success modal layers on top of it) -------
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-6">
+    <>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-6">
       {/* Discord username */}
       <div>
         <label htmlFor="discordUsername" className="mb-2 block font-body text-sm text-slate">
@@ -335,6 +300,12 @@ export function ApplyForm() {
           </>
         )}
       </button>
-    </form>
+      </form>
+
+      <ApplySuccessModal
+        open={status === "success"}
+        onClose={() => setStatus("idle")}
+      />
+    </>
   );
 }
