@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { applicationSchema } from "@/lib/applicationSchema";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { notifyNewApplication } from "@/lib/notifyDiscord";
 
 /**
  * POST /api/apply
@@ -58,23 +59,42 @@ export async function POST(request: Request) {
   //    missing env var throws and is caught below as a generic 500.
   try {
     const supabase = getSupabaseAdmin();
-    const { error } = await supabase.from("applications").insert({
-      discord_username: data.discordUsername,
-      x_handle: data.xHandle ?? null,
-      role: data.role,
-      work_url: data.workUrl,
-      note: data.note ?? null,
-      // status defaults to 'pending' in the schema; Phase 2 flips it.
-    });
+    const { data: inserted, error } = await supabase
+      .from("applications")
+      .insert({
+        discord_username: data.discordUsername,
+        x_handle: data.xHandle ?? null,
+        role: data.role,
+        work_url: data.workUrl,
+        note: data.note ?? null,
+        // status defaults to 'pending' in the schema; Phase 2 flips it.
+      })
+      .select("id, created_at")
+      .single();
 
-    if (error) {
+    if (error || !inserted) {
       // Log the real Postgres error server-side; return a generic message.
-      console.error("[apply] insert failed:", error.message);
+      console.error("[apply] insert failed:", error?.message ?? "no row returned");
       return NextResponse.json(
         { ok: false, error: "Could not save your application. Try again." },
         { status: 502 },
       );
     }
+
+    // Notify the admin channel. This is fail-safe: notifyNewApplication never
+    // throws, so a webhook problem can't turn this successful submission into an
+    // error for the applicant. We await it (rather than fire-and-forget) so the
+    // request to Discord actually completes before the serverless function
+    // freezes — the notifier has its own 4s timeout to stay snappy.
+    await notifyNewApplication({
+      id: inserted.id,
+      createdAt: inserted.created_at,
+      discordUsername: data.discordUsername,
+      xHandle: data.xHandle ?? null,
+      role: data.role,
+      workUrl: data.workUrl,
+      note: data.note ?? null,
+    });
   } catch (err) {
     console.error("[apply] unexpected error:", err);
     return NextResponse.json(
