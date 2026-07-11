@@ -8,11 +8,13 @@
  * swapping inline content — gives submission a "sealed" moment instead of just
  * silently rewriting the page.
  *
- * Dismissal is uniform on purpose: the X button, the Escape key, and clicking
- * the dimmed backdrop all do the exact same thing — close the modal and
- * navigate back to "/". There's deliberately only one other action available
- * ("Stay on the Radar" → Telegram), so the modal never presents more than two
- * meaningfully different paths forward.
+ * Dismissal is DELIBERATE, not incidental: only the X button, the "Back to
+ * home" button, or the Escape key close it. The backdrop is NOT a tap-to-close
+ * target here — unlike the mobile nav menu, this modal's one live action
+ * ("Stay on the Radar" → Telegram) is exactly the kind of thing a user might
+ * reach for right as their thumb grazes the dimmed area around it. Losing that
+ * action to a mistaken tap is a worse outcome than requiring an explicit close,
+ * so the backdrop is decorative only.
  *
  * LAYERING NOTE (learned from the mobile nav scrim bug): the backdrop is
  * rendered as a SIBLING of the modal panel, not a parent wrapping it. An
@@ -83,10 +85,10 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
           exit={{ opacity: 0 }}
           transition={{ duration: reduceMotion ? 0 : 0.2 }}
         >
-          {/* Backdrop — sibling of the panel below, not its parent. */}
+          {/* Backdrop — decorative dim/blur only. Deliberately NOT a close
+              target (see file header comment). */}
           <div
             aria-hidden
-            onClick={handleClose}
             className="absolute inset-0 bg-black/70 backdrop-blur-md"
           />
 
@@ -127,7 +129,7 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
               Keep an eye on your Discord DMs.
             </p>
 
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a
                 href={TELEGRAM_URL}
                 target="_blank"
@@ -136,6 +138,13 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
               >
                 Stay on the Radar
               </a>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 px-6 py-3 font-body text-sm font-medium text-white transition-colors hover:border-white/30 hover:bg-white/5"
+              >
+                Back to home
+              </button>
             </div>
           </motion.div>
         </motion.div>
