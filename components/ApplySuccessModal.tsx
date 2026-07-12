@@ -52,12 +52,24 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
 
   // Background scroll lock while open — same iOS-safe position:fixed technique
   // used for the mobile nav menu (overflow:hidden alone doesn't hold on iOS).
+  //
+  // IMPORTANT DIFFERENCE from the nav menu's version of this lock: this
+  // component does NOT restore the saved scroll position on cleanup. Every way
+  // of closing this modal (X, "Back to home", Escape) also calls
+  // router.push("/") — i.e. every close is also a navigation to a different
+  // route, which unmounts this component. If we restored `scrollY` here, we'd
+  // be applying the OLD page's (/apply's) scroll offset to the brand-new page
+  // ("/") right as it loads — landing the user at some arbitrary point deep in
+  // the homepage (this is exactly what caused "Back to home" and X to land on
+  // the About section instead of the top: a stale /apply scroll position
+  // bleeding into the freshly-navigated homepage). Next.js's router already
+  // scrolls a plain (non-hash) destination to the top by default, so the
+  // correct move here is to do nothing and let that happen.
   useEffect(() => {
     if (!open) return;
-    const scrollY = window.scrollY;
     const { style } = document.body;
     style.position = "fixed";
-    style.top = `-${scrollY}px`;
+    style.top = `-${window.scrollY}px`;
     style.left = "0";
     style.right = "0";
     return () => {
@@ -65,7 +77,8 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
       style.top = "";
       style.left = "";
       style.right = "";
-      window.scrollTo(0, scrollY);
+      // Deliberately no window.scrollTo restore here — see the comment above
+      // this effect for why.
     };
   }, [open]);
 
@@ -85,7 +98,8 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
           exit={{ opacity: 0 }}
           transition={{ duration: reduceMotion ? 0 : 0.2 }}
         >
-          {/* Backdrop — decorative dim/blur only. */}
+          {/* Backdrop — decorative dim/blur only. Deliberately NOT a close
+              target (see file header comment). */}
           <div
             aria-hidden
             className="absolute inset-0 bg-black/70 backdrop-blur-md"

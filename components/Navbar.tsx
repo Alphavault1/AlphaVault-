@@ -1,6 +1,7 @@
 "use client";
 
 
+
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -49,27 +50,30 @@ export function Navbar() {
       style.top = "";
       style.left = "";
       style.right = "";
+
+      // Restore the saved scroll position INSTANTLY, not animated. The site
+      // sets `scroll-behavior: smooth` globally, which would otherwise turn
+      // this restore into an animated scroll — and that animation runs at the
+      // exact same moment the mobile menu panel is also collapsing (its own
+      // 250ms height animation, right above). Two concurrent layout-changing
+      // animations is a reliable way to get the scroll animation interrupted
+      // mid-flight on mobile browsers, leaving the page stranded near the top
+      // instead of completing the trip back down to `scrollY`. Toggling
+      // scroll-behavior to "auto" just for this one call sidesteps that
+      // entirely — same technique Next.js uses internally for its own route
+      // transitions (see `disableSmoothScrollDuringRouteTransition`).
+      const html = document.documentElement;
+      const prevScrollBehavior = html.style.scrollBehavior;
+      html.style.scrollBehavior = "auto";
       window.scrollTo(0, scrollY);
+      html.style.scrollBehavior = prevScrollBehavior;
     };
   }, [menuOpen]);
 
   // Close the mobile menu after any navigation so it never lingers over content.
   const closeMenu = () => setMenuOpen(false);
 
-  /**
-   * Mobile section links (#about, #manifesto, etc.) need custom handling
-   * instead of a plain anchor jump. Reason: while the mobile menu is open, the
-   * background-scroll-lock effect above pins <body> with position:fixed. When
-   * a link is tapped, the browser's native "jump to #hash" and our lock's
-   * cleanup (which restores the pre-lock scroll position) both fire at nearly
-   * the same moment — and the restore reliably wins that race, snapping the
-   * page back to where it was and making the tap look like it did nothing.
-   *
-   * Fix: prevent the native jump, close the menu, and — once the close
-   * animation + scroll-lock cleanup have had time to finish — scroll to the
-   * target ourselves. This removes the race entirely rather than trying to
-   * win it.
-   */
+ 
   function handleSectionLinkClick(
     e: React.MouseEvent<HTMLAnchorElement>,
     href: string,
