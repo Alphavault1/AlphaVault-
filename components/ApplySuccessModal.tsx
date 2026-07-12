@@ -85,8 +85,7 @@ export function ApplySuccessModal({ open, onClose }: ApplySuccessModalProps) {
           exit={{ opacity: 0 }}
           transition={{ duration: reduceMotion ? 0 : 0.2 }}
         >
-          {/* Backdrop — decorative dim/blur only. Deliberately NOT a close
-              target (see file header comment). */}
+          {/* Backdrop — decorative dim/blur only. */}
           <div
             aria-hidden
             className="absolute inset-0 bg-black/70 backdrop-blur-md"
