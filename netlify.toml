@@ -12,3 +12,15 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Redirect the default Netlify subdomain to the custom domain. Netlify keeps
+# the *.netlify.app subdomain live permanently as a fallback even after a
+# custom domain is attached — there's no dashboard toggle to change that, so
+# this is done as an explicit redirect rule instead. Only matches requests
+# whose Host header is the old subdomain, so it has no effect once visitors
+# are already on alphavaultx.com.
+[[redirects]]
+  from = "https://alphavaultx.netlify.app/*"
+  to = "https://alphavaultx.com/:splat"
+  status = 301
+  force = true
