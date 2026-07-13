@@ -30,10 +30,10 @@ export const metadata: Metadata = {
   // metadataBase makes relative OG/Twitter image URLs (like /og-cover.jpg)
   // resolve to an absolute URL. Without it, Next falls back to
   // http://localhost:3000 at build time, which breaks link previews on
-  // X/Telegram/Discord. Override via NEXT_PUBLIC_SITE_URL if you add a custom
-  // domain later.
+  // X/Telegram/Discord. Defaults to the live custom domain now that DNS is
+  // active; override via NEXT_PUBLIC_SITE_URL if the domain ever changes.
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://alphavaultx.netlify.app"
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://alphavaultx.com"
   ),
   title: "Alpha Vault — A Web3 Collective for Contributors",
   description:

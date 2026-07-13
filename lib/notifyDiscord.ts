@@ -19,7 +19,7 @@ import "server-only";
 
 const GOLD = 0xd4af37; // Alpha Vault gold, as a Discord embed color int.
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://alphavaultx.netlify.app";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://alphavaultx.com";
 
 export interface NewApplicationNotice {
   id: string;
