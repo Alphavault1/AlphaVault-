@@ -4,13 +4,29 @@
  * Hero
  * ----
  * The filter-and-hook opener. Two-column split on desktop (copy left, the Alpha
- * Vault emblem right); stacks vertically on mobile with the emblem beneath the
+ * Vault artwork right); stacks vertically on mobile with the artwork beneath the
  * copy.
  *
- * The emblem is the brand's own artwork (public/vault-mark.png) rather than a
- * stand-in — served through next/image for automatic optimization. A soft gold
- * halo seats it against the dark background, and a slow float gives it life
- * without rotating it (it isn't radially symmetric — it has a key and hinges).
+ * The visual is the brand's own key artwork (public/hero-vault.webp) — the open
+ * vault with the mascot — served through next/image for automatic optimization.
+ * It's the brand's supplied piece with the baked-in "ALPHA VAULT" wordmark and
+ * @_ALPHAVAULT handle cropped off, since the page already states both in live
+ * text (the wordmark sits in the navbar, the headline right beside this image).
+ * Duplicating them inside a raster image would be redundant and unselectable.
+ *
+ * The asset's edges are feathered to transparency so the scene dissolves into
+ * the page instead of showing a rectangle — the artwork's own background is a
+ * warm dark brown that reads visibly against the page's cooler #0B0E11.
+ * WebP (not PNG) because this is photographic: 153KB vs 1.2MB for identical
+ * output, and it keeps the alpha channel. Safari/iOS 14+ (our browserslist
+ * floor) support WebP transparency.
+ *
+ * Two motion layers keep it alive rather than static: a slow float, and a faint
+ * gold glow breathing behind it (bleeding through the feathered edges). The
+ * glow is much fainter than the one the old emblem used, since this artwork
+ * already carries its own; their cycles are deliberately offset (6s vs 7s) so
+ * they never lock into an obvious mechanical sync. It's never rotated — the
+ * composition has a fixed "up".
  *
  * Entrance uses a single staggered container so the eyebrow, headline, sub-copy
  * and CTAs rise in sequence — one orchestrated moment, not four at once.
@@ -22,7 +38,7 @@ import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { ArrowRight, Send } from "lucide-react";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { APPLY_PATH, TELEGRAM_URL } from "@/lib/content";
-import vaultMark from "@/public/vault-mark.png";
+import heroVault from "@/public/hero-vault.webp";
 
 export function Hero() {
   const reduceMotion = useReducedMotion();
@@ -98,35 +114,74 @@ export function Hero() {
           </motion.div>
         </motion.div>
 
-        {/* Right: brand emblem. Fades/scales in after the copy settles. */}
+        {/* Right: the brand's hero artwork. Fades/scales in after the copy settles.
+            Two motion layers keep it alive rather than static: a slow float, and
+            a faint glow breathing behind it. */}
         <motion.div
           initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.94 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: reduceMotion ? 0 : 0.9, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-          className="relative flex justify-center lg:justify-end"
+          className="flex justify-center lg:justify-end"
         >
-          {/* Soft gold halo seating the emblem. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[70%] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/20 blur-3xl animate-shimmer"
-          />
-          {/* Gentle float loop (skipped for reduced-motion users). */}
-          <motion.div
-            animate={reduceMotion ? {} : { y: [0, -14, 0] }}
-            transition={
-              reduceMotion
-                ? {}
-                : { duration: 7, ease: "easeInOut", repeat: Infinity }
-            }
-          >
-            <Image
-              src={vaultMark}
-              alt="The Alpha Vault emblem — a gilded vault door with a ship's-wheel handle."
-              priority
-              sizes="(max-width: 1024px) 70vw, 440px"
-              className="h-auto w-[260px] sm:w-[340px] lg:w-[440px]"
+          {/* Sized box. Everything below is positioned relative to THIS, not to
+              the grid column — which matters on lg, where the column is wider
+              than the artwork and `lg:justify-end` pushes the artwork right. A
+              glow centred on the column would sit noticeably left of a
+              right-aligned image; centred on this box, it tracks the artwork at
+              every breakpoint.
+
+              `w-full` + `max-w-*` (rather than a fixed `w-*`) is deliberate: it
+              caps the artwork's size but lets it shrink, so it can never
+              overflow its container. A fixed width overflows twice — on ~320px
+              phones, and at exactly the 1024px `lg` breakpoint, where the grid
+              column is only ~464px wide (narrower than at 1152px+, because the
+              container hasn't hit its max width yet). */}
+          <div className="relative w-full max-w-[300px] sm:max-w-[380px] lg:max-w-[440px]">
+            {/* Layer 1 — ambient glow, breathing.
+                Deliberately much fainter than the halo the old emblem used
+                (gold/15, not gold/20): this artwork has its own glow baked in,
+                so this isn't here to light it. It's here to bleed through the
+                feathered edges and pulse gently against the page, so the piece
+                radiates instead of sitting still.
+                It sits outside the float wrapper on purpose — staying put while
+                the artwork drifts through it reads as depth, rather than the
+                whole thing sliding around as one flat unit.
+                Its 6s cycle is intentionally out of step with the float's 7s —
+                equal timings would lock the two into a mechanical, obviously
+                looping sync. Offsetting them makes the motion read as organic. */}
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[74%] w-[80%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold/15 blur-3xl"
+              animate={
+                reduceMotion
+                  ? {}
+                  : { opacity: [0.5, 1, 0.5], scale: [0.94, 1.06, 0.94] }
+              }
+              transition={
+                reduceMotion
+                  ? {}
+                  : { duration: 6, ease: "easeInOut", repeat: Infinity }
+              }
             />
-          </motion.div>
+
+            {/* Layer 2 — gentle float loop (skipped for reduced-motion users). */}
+            <motion.div
+              animate={reduceMotion ? {} : { y: [0, -14, 0] }}
+              transition={
+                reduceMotion
+                  ? {}
+                  : { duration: 7, ease: "easeInOut", repeat: Infinity }
+              }
+            >
+              <Image
+                src={heroVault}
+                alt="An open gold Alpha Vault door revealing Web3 tokens — DeFi, DAO, L2, ZK, NFT — with the Alpha Vault robot mascot standing in front."
+                priority
+                sizes="(max-width: 640px) 300px, (max-width: 1024px) 380px, 440px"
+                className="h-auto w-full"
+              />
+            </motion.div>
+          </div>
         </motion.div>
       </div>
     </section>

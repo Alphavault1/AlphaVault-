@@ -76,7 +76,8 @@ for now; de-duplication and rate-limiting come with the anti-abuse phase.
 | `app/globals.css` | Tailwind layers, base type, focus states, reduced-motion, smooth scroll |
 | `tailwind.config.ts` | Design tokens — palette, font-variable mapping, shadows, grid texture |
 | `lib/content.ts` | Typed content — nav links, pillars, access steps, socials |
-| `public/vault-mark.png` | The Alpha Vault emblem (cropped from the brand artwork, edges feathered) |
+| `public/hero-vault.webp` | The hero artwork — open vault + mascot (brand piece, baked-in text cropped off, edges feathered) |
+| `public/vault-mark.png` | The Alpha Vault emblem — used as the small logo in the navbar, on `/apply`, and as the Discord avatar |
 | `public/og-cover.jpg` | Social-share / OpenGraph banner (the brand cover) |
 | `components/Navbar.tsx` | Sticky glassmorphism header + animated mobile menu |
 | `components/Hero.tsx` | Hero — emblem, orchestrated entrance, dual CTAs |
@@ -149,8 +150,15 @@ steps, social URLs). The Telegram / X links are placeholders (`telegram.org`,
 `x.com`) — swap them there, plus the two inline references in `Hero.tsx` /
 `PurgeDay.tsx`, for the real community links.
 
-To replace the emblem or social banner, drop new files at `public/vault-mark.png`
-and `public/og-cover.jpg`.
+To replace the artwork, drop new files at `public/hero-vault.webp` (the big hero
+visual), `public/vault-mark.png` (the small logo — navbar, `/apply`, Discord
+avatar), or `public/og-cover.jpg` (the social-share banner).
+
+Two things to preserve if you regenerate the hero artwork: **feather the edges to
+transparency** (its background is a warm dark brown that shows as a visible
+rectangle against the page's cooler `#0B0E11` otherwise), and **don't include
+baked-in text** — the wordmark and headline are already live text elsewhere on
+the page, so duplicating them in a raster image is redundant and unselectable.
 
 ## Purge Day countdown
 
