@@ -14,10 +14,19 @@
  * text (the wordmark sits in the navbar, the headline right beside this image).
  * Duplicating them inside a raster image would be redundant and unselectable.
  *
- * The asset's edges are feathered to transparency so the scene dissolves into
- * the page instead of showing a rectangle — the artwork's own background is a
- * warm dark brown that reads visibly against the page's cooler #0B0E11.
- * WebP (not PNG) because this is photographic: 153KB vs 1.2MB for identical
+ * The asset is masked so the scene dissolves into the page rather than showing
+ * a rectangle. The mask is horizontal + a light top fade only — NOT all four
+ * sides. That's driven by the artwork itself: its top, bottom and left edges
+ * already sit at the page's own luminance (~11–18 vs the page's 14), so they
+ * need no fade, while the right edge carries a bright nebula that does. The
+ * bottom must not be faded at all — the robot's feet live there.
+ * Crop bounds are likewise measured, not eyeballed: the brand's baked-in
+ * wordmark ends at y=520 and the @_ALPHAVAULT handle starts at y=1928, with the
+ * robot's feet ending at y=1897 — so the art is cut at y=525..1920, using the
+ * gap between the feet and the handle. The horizontal window is offset +50px to
+ * bake in an optical-centring correction (the open vault door makes the right
+ * side marginally heavier; measured visual centroid +1.55% -> +0.11%).
+ * WebP (not PNG) because this is photographic: ~122KB vs 1.2MB for identical
  * output, and it keeps the alpha channel. Safari/iOS 14+ (our browserslist
  * floor) support WebP transparency.
  *
@@ -67,7 +76,13 @@ export function Hero() {
       <div className="absolute inset-0 -z-10 bg-radial-fade" />
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-ink" />
 
-      <div className="container-vault grid grid-cols-1 items-center gap-12 pb-20 pt-32 md:pb-28 md:pt-40 lg:grid-cols-2 lg:gap-8">
+      {/* Bottom padding is deliberately lighter than the top (pb-12 vs pt-32).
+          The section below (About) contributes its own py-24/py-32, so the gap
+          under the artwork is the SUM of the two — at the old pb-20 that stacked
+          up to ~176px on mobile, which left the artwork stranded in dead space.
+          Trimming here (rather than in About) keeps About's padding consistent
+          with every other section on the page. */}
+      <div className="container-vault grid grid-cols-1 items-center gap-12 pb-12 pt-32 md:pb-20 md:pt-40 lg:grid-cols-2 lg:gap-8">
         {/* Left: copy */}
         <motion.div variants={container} initial="hidden" animate="visible">
           <motion.div variants={item}>
@@ -135,8 +150,19 @@ export function Hero() {
               overflow its container. A fixed width overflows twice — on ~320px
               phones, and at exactly the 1024px `lg` breakpoint, where the grid
               column is only ~464px wide (narrower than at 1152px+, because the
-              container hasn't hit its max width yet). */}
-          <div className="relative w-full max-w-[300px] sm:max-w-[380px] lg:max-w-[440px]">
+              container hasn't hit its max width yet).
+
+              This also lands the artwork at 85–88% of viewport width on phones
+              (272px of 320, 366px of 414) — the size we want — without the
+              overflow a literal `88vw` would cause: the container has `px-6`
+              padding, so 88vw exceeds the available width on anything under
+              ~400px.
+
+              sm's cap is LARGER than lg's on purpose. They're different layouts,
+              not a mistake: below lg the hero is stacked and the artwork gets
+              the full container, while at lg it shares a two-column grid and is
+              limited to half of it. */}
+          <div className="relative w-full max-w-[380px] sm:max-w-[460px] lg:max-w-[440px]">
             {/* Layer 1 — ambient glow, breathing.
                 Deliberately much fainter than the halo the old emblem used
                 (gold/15, not gold/20): this artwork has its own glow baked in,
@@ -177,7 +203,7 @@ export function Hero() {
                 src={heroVault}
                 alt="An open gold Alpha Vault door revealing Web3 tokens — DeFi, DAO, L2, ZK, NFT — with the Alpha Vault robot mascot standing in front."
                 priority
-                sizes="(max-width: 640px) 300px, (max-width: 1024px) 380px, 440px"
+                sizes="(max-width: 640px) 380px, (max-width: 1024px) 460px, 440px"
                 className="h-auto w-full"
               />
             </motion.div>
