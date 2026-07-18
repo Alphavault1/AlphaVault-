@@ -90,6 +90,9 @@ for now; de-duplication and rate-limiting come with the anti-abuse phase.
 | `components/ui/Reveal.tsx` | Reusable scroll-reveal wrapper (reduced-motion aware) |
 | `components/ui/SectionLabel.tsx` | The eyebrow label above each section heading |
 | `app/apply/page.tsx` | The `/apply` entry page (framing + form) |
+| `app/community/page.tsx` | The `/community` page — stats strip + contributor directory |
+| `components/CommunityStats.tsx` | The stats strip (hand-entered numbers — see note below) |
+| `components/ContributorCard.tsx` | One contributor card, with an initials-badge fallback avatar |
 | `components/ApplyForm.tsx` | The application form — inline validation, submit states, honeypot |
 | `app/api/apply/route.ts` | Server route that validates and stores submissions |
 | `lib/applicationSchema.ts` | Shared zod schema — one source of truth for validation |
@@ -142,6 +145,24 @@ Discord-gated / invites-on-Purge-Day mechanic. All of it lives in
   + iOS)** and **Chrome on iOS** (which uses the Safari/WebKit engine).
 - Keyboard focus is always visible (`:focus-visible` gold ring); flex `gap`,
   `scroll-margin-top`, and smooth scroll all degrade gracefully on older Safari.
+
+## Community page — placeholder data, replace before treating as final
+
+`/community` is fully built and live, but two things on it are intentionally
+placeholder, not real:
+
+- **The stats strip** (`COMMUNITY_STATS` in `lib/content.ts`) — hand-entered
+  numbers, currently `—`. There's no live data source wired up (no Discord API,
+  no Supabase count query) — update the `value` strings by hand as the
+  community grows.
+- **The contributor cards** (`CONTRIBUTORS` in `lib/content.ts`) — three
+  example entries (Ada K., Femi O., Priya S.) standing in for real community
+  members, to prove out the layout. Replace with real people: name, X handle,
+  a role from the existing `APPLICANT_ROLES` list, and — ideally — an actual
+  avatar image file dropped in `public/contributors/` and referenced via
+  `avatarUrl`. Claude can't fetch an X avatar automatically; each contributor
+  needs to supply an image, or their card falls back to a gold initials badge
+  (a deliberate, on-brand fallback — not a bug).
 
 ## Editing content
 

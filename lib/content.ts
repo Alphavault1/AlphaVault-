@@ -7,6 +7,7 @@
  */
 
 import type { LucideIcon } from "lucide-react";
+import type { ApplicantRole } from "@/lib/applicationSchema";
 import {
   Compass,
   Lock,
@@ -20,19 +21,37 @@ import {
 } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
+/*  Route paths — declared first since NAV_LINKS below references them         */
+/* -------------------------------------------------------------------------- */
+
+/** "Enter the Vault" leads to the real application form at /apply. */
+export const APPLY_PATH = "/apply";
+
+/** "Community" leads to the stats + contributor spotlight page. */
+export const COMMUNITY_PATH = "/community";
+
+/* -------------------------------------------------------------------------- */
 /*  Navigation                                                                 */
 /* -------------------------------------------------------------------------- */
 
 export interface NavLink {
   label: string;
-  /** In-page anchor target (matches a section id). */
+  /** In-page anchor target (matches a section id) — unless `kind: "route"`. */
   href: string;
+  /**
+   * "route" = a real Next.js page (rendered with next/link, a full
+   * navigation). Omitted (the default) = a same-page hash anchor, handled by
+   * Navbar's scroll logic. Community is the one real route mixed in among the
+   * section anchors, so it needs to be tagged explicitly rather than assumed.
+   */
+  kind?: "route";
 }
 
 export const NAV_LINKS: readonly NavLink[] = [
   { label: "About", href: "#about" },
   { label: "Manifesto", href: "#manifesto" },
   { label: "Ecosystem", href: "#ecosystem" },
+  { label: "Community", href: COMMUNITY_PATH, kind: "route" },
   { label: "Gating Mechanism", href: "#gating" },
 ] as const;
 
@@ -147,15 +166,78 @@ export interface SocialLink {
 }
 
 export const SOCIAL_LINKS: readonly SocialLink[] = [
-  { label: "X", href: "https://x.com/_alphavault" },
-  { label: "Telegram", href: "https://t.me/+CR_tipU_44c0ZGFk" },
+  { label: "X", href: "https://x.com" },
+  { label: "Telegram", href: "https://telegram.org" },
 ] as const;
 
 /**
- * Primary CTA target. "Enter the Vault" now leads to the real application form
- * at /apply (Phase 1), not just the on-page gating explainer. The "Gating
- * Mechanism" nav link still points at the #gating section, so the two are now
- * genuinely distinct destinations.
+ * "Enter the Vault" leads to the real application form at /apply (Phase 1),
+ * not just the on-page gating explainer — see APPLY_PATH at the top of this
+ * file. The "Gating Mechanism" nav link still points at the #gating section,
+ * so the two are genuinely distinct destinations.
  */
-export const APPLY_PATH = "/apply";
-export const TELEGRAM_URL = "https://t.me/+CR_tipU_44c0ZGFk";
+export const TELEGRAM_URL = "https://telegram.org";
+
+/* -------------------------------------------------------------------------- */
+/*  Community — stats strip + contributor spotlight (/community)              */
+/* -------------------------------------------------------------------------- */
+
+export interface CommunityStat {
+  label: string;
+  value: string;
+}
+
+/**
+ * PLACEHOLDER NUMBERS. These are entered by hand (not pulled from a live
+ * source — no Discord API, no Supabase count wired up here), so they only stay
+ * accurate if updated manually as the community grows. Replace the `value`
+ * strings with real figures before this page is considered final.
+ */
+export const COMMUNITY_STATS: readonly CommunityStat[] = [
+  { label: "Members", value: "—" },
+  { label: "Applications Reviewed", value: "—" },
+  { label: "Contributors Spotlighted", value: "—" },
+] as const;
+
+export interface Contributor {
+  name: string;
+  /** X handle, without the leading "@" (added when rendering). */
+  xHandle: string;
+  role: ApplicantRole;
+  /** One line on what they do. Optional — omit for a terser card. */
+  blurb?: string;
+  /**
+   * Path to their avatar image, if they've supplied one (e.g. "/contributors/
+   * ada.jpg"). Left undefined here on purpose: Claude cannot fetch an X
+   * avatar automatically — each contributor needs to supply an actual image
+   * file. Until then, ContributorCard renders an initials badge instead, so
+   * every card looks intentional rather than broken.
+   */
+  avatarUrl?: string;
+}
+
+/**
+ * EXAMPLE ENTRIES — placeholders to prove out the page's layout, not real
+ * community members. Replace with real contributors (name, X handle, role,
+ * and ideally an avatar image) once that information comes in.
+ */
+export const CONTRIBUTORS: readonly Contributor[] = [
+  {
+    name: "Ada K.",
+    xHandle: "adak_builds",
+    role: "Developer",
+    blurb: "Shipping the smart-contract tooling behind the vault.",
+  },
+  {
+    name: "Femi O.",
+    xHandle: "femi_designs",
+    role: "Designer",
+    blurb: "The visual language behind Alpha Vault.",
+  },
+  {
+    name: "Priya S.",
+    xHandle: "priya_alpha",
+    role: "Trading & Alpha",
+    blurb: "Surfaces the alpha before it reaches the crowd.",
+  },
+] as const;

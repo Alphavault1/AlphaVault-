@@ -1,6 +1,25 @@
 "use client";
 
-
+/**
+ * Navbar
+ * ------
+ * Sticky glassmorphism header. It's a client component for three reasons:
+ *   1. A scroll listener that deepens the blur/border once the user leaves the
+ *      hero, so the bar reads as "floating glass" only when there's content
+ *      behind it.
+ *   2. A mobile menu that animates open/closed with Framer Motion.
+ *   3. A full-screen blurred scrim behind the open mobile menu that dims/blurs
+ *      the page and doubles as the tap-anywhere-to-close target.
+ *
+ * IMPORTANT layering detail: the scrim is rendered as a SIBLING of <header>,
+ * NOT inside it. The header has `backdrop-blur`, and any ancestor with
+ * backdrop-filter/filter/transform becomes the containing block for
+ * `position: fixed` descendants — which would shrink a `fixed inset-0` scrim
+ * down to the header's little bar instead of the viewport, and also stop its
+ * blur from seeing the page. Keeping the scrim outside the header makes it
+ * viewport-sized and lets its backdrop blur work. z-index: page < scrim (40) <
+ * header + menu (50).
+ */
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
@@ -73,7 +92,20 @@ export function Navbar() {
   // Close the mobile menu after any navigation so it never lingers over content.
   const closeMenu = () => setMenuOpen(false);
 
- 
+  /**
+   * Mobile section links (#about, #manifesto, etc.) need custom handling
+   * instead of a plain anchor jump. Reason: while the mobile menu is open, the
+   * background-scroll-lock effect above pins <body> with position:fixed. When
+   * a link is tapped, the browser's native "jump to #hash" and our lock's
+   * cleanup (which restores the pre-lock scroll position) both fire at nearly
+   * the same moment — and the restore reliably wins that race, snapping the
+   * page back to where it was and making the tap look like it did nothing.
+   *
+   * Fix: prevent the native jump, close the menu, and — once the close
+   * animation + scroll-lock cleanup have had time to finish — scroll to the
+   * target ourselves. This removes the race entirely rather than trying to
+   * win it.
+   */
   function handleSectionLinkClick(
     e: React.MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -126,15 +158,25 @@ export function Navbar() {
 
           {/* Desktop links */}
           <div className="hidden items-center gap-8 md:flex">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="text-sm text-slate transition-colors hover:text-white"
-              >
-                {link.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((link) =>
+              link.kind === "route" ? (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-slate transition-colors hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-slate transition-colors hover:text-white"
+                >
+                  {link.label}
+                </a>
+              ),
+            )}
             <Link
               href={APPLY_PATH}
               className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
@@ -170,16 +212,27 @@ export function Navbar() {
               className="overflow-hidden border-t border-white/5 bg-black/90 backdrop-blur-xl md:hidden"
             >
               <div className="container-vault flex flex-col gap-1 py-4">
-                {NAV_LINKS.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    onClick={(e) => handleSectionLinkClick(e, link.href)}
-                    className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {NAV_LINKS.map((link) =>
+                  link.kind === "route" ? (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={closeMenu}
+                      className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      onClick={(e) => handleSectionLinkClick(e, link.href)}
+                      className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      {link.label}
+                    </a>
+                  ),
+                )}
                 <Link
                   href={APPLY_PATH}
                   onClick={closeMenu}
