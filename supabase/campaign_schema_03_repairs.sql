@@ -143,6 +143,26 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- STEP 4b — ensure `email` exists. This was a genuine gap in the first
+-- version of this repair file, not a re-check: the signup trigger
+-- (handle_new_campaign_user, below) inserts an `email` value into profiles,
+-- but nothing before this step ever confirmed that column actually exists on
+-- the real table. It didn't — which is exactly what caused signups to keep
+-- failing even after the x_handle/role/status reconciliation succeeded.
+-- ---------------------------------------------------------------------------
+alter table public.profiles add column if not exists email text;
+
+-- Backfill any existing rows (there shouldn't be any yet, since every
+-- signup attempt has been failing and rolling back completely — but this is
+-- safe and correct regardless) from auth.users, which always has it.
+update public.profiles p
+set email = u.email
+from auth.users u
+where p.id = u.id and p.email is null;
+
+alter table public.profiles alter column email set not null;
+
+-- ---------------------------------------------------------------------------
 -- STEP 5 — the constraints Phase 1 expected but never actually got applied
 -- (since the original CREATE TABLE was skipped — see the file header).
 -- ---------------------------------------------------------------------------

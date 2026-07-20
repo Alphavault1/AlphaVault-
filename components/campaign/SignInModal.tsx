@@ -80,9 +80,26 @@ export function SignInModal({ onSwitchToSignUp, onSuccess }: SignInModalProps) {
         await supabase.auth.signInWithPassword({ email, password: parsed.data.password });
 
       if (signInError || !signInData.user) {
-        // Same generic message regardless of whether the handle didn't exist
-        // or the password was wrong — see lookup-email's enumeration note.
-        setSubmitError("Invalid handle or password.");
+        // "Email not confirmed" is deliberately shown as its own specific
+        // message, not lumped into the generic one below. This differs from
+        // the enumeration-safety reasoning elsewhere in this flow: someone
+        // typing their OWN just-created handle and password has already
+        // proven the account is theirs — telling them precisely what's
+        // blocking them (confirm your email) doesn't leak anything to an
+        // attacker that guessing random handles would meaningfully expose,
+        // and leaving people stuck on a generic "wrong password" message
+        // when the real issue is an unclicked email link is a worse,
+        // needlessly confusing outcome.
+        if (signInError?.message?.toLowerCase().includes("email not confirmed")) {
+          setSubmitError(
+            "Confirm your email first — check your inbox for a link, then try signing in again.",
+          );
+        } else {
+          // Same generic message regardless of whether the handle didn't
+          // exist or the password was wrong — see lookup-email's
+          // enumeration note.
+          setSubmitError("Invalid handle or password.");
+        }
         setStatus("idle");
         return;
       }
