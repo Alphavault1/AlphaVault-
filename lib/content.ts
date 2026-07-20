@@ -7,7 +7,6 @@
  */
 
 import type { LucideIcon } from "lucide-react";
-import type { ApplicantRole } from "@/lib/applicationSchema";
 import {
   Compass,
   Lock,
@@ -27,7 +26,7 @@ import {
 /** "Enter the Vault" leads to the real application form at /apply. */
 export const APPLY_PATH = "/apply";
 
-/** "Community" leads to the stats + contributor spotlight page. */
+/** "Community" leads to the stats + achievements page. */
 export const COMMUNITY_PATH = "/community";
 
 /* -------------------------------------------------------------------------- */
@@ -179,7 +178,7 @@ export const SOCIAL_LINKS: readonly SocialLink[] = [
 export const TELEGRAM_URL = "https://telegram.org";
 
 /* -------------------------------------------------------------------------- */
-/*  Community — stats strip + contributor spotlight (/community)              */
+/*  Community — stats strip + achievements (/community)                       */
 /* -------------------------------------------------------------------------- */
 
 export interface CommunityStat {
@@ -192,52 +191,57 @@ export interface CommunityStat {
  * source — no Discord API, no Supabase count wired up here), so they only stay
  * accurate if updated manually as the community grows. Replace the `value`
  * strings with real figures before this page is considered final.
+ *
+ * The third stat is deliberately labeled "Contributors" rather than
+ * "Contributors Spotlighted" — the client asked to drop the public spotlight
+ * section itself (the grid of individual profiles that used to sit below this
+ * strip), but keep tracking this number. A label that still said "Spotlighted"
+ * would reference a feature that no longer exists on the page, which is the
+ * kind of small inconsistency worth avoiding.
  */
 export const COMMUNITY_STATS: readonly CommunityStat[] = [
   { label: "Members", value: "—" },
   { label: "Applications Reviewed", value: "—" },
-  { label: "Contributors Spotlighted", value: "—" },
+  { label: "Contributors", value: "—" },
 ] as const;
 
-export interface Contributor {
-  name: string;
-  /** X handle, without the leading "@" (added when rendering). */
-  xHandle: string;
-  role: ApplicantRole;
-  /** One line on what they do. Optional — omit for a terser card. */
-  blurb?: string;
-  /**
-   * Path to their avatar image, if they've supplied one (e.g. "/contributors/
-   * ada.jpg"). Left undefined here on purpose: Claude cannot fetch an X
-   * avatar automatically — each contributor needs to supply an actual image
-   * file. Until then, ContributorCard renders an initials badge instead, so
-   * every card looks intentional rather than broken.
-   */
-  avatarUrl?: string;
+export interface Achievement {
+  title: string;
+  description: string;
+  /** Freeform, e.g. "Jul 2026" — not a real Date, so it's easy to hand-edit. */
+  date: string;
 }
 
 /**
- * EXAMPLE ENTRIES — placeholders to prove out the page's layout, not real
- * community members. Replace with real contributors (name, X handle, role,
- * and ideally an avatar image) once that information comes in.
+ * PLACEHOLDER ENTRIES — 4 plausible milestones invented to prove out the
+ * page's layout, not real events. Swap the `title`/`description`/`date` in
+ * each one for the real thing whenever it happens; the shape (a short title, a
+ * one-line description, a loose date string) is meant to make that a quick
+ * edit rather than a restructure.
  */
-export const CONTRIBUTORS: readonly Contributor[] = [
+export const ACHIEVEMENTS: readonly Achievement[] = [
   {
-    name: "Ada K.",
-    xHandle: "adak_builds",
-    role: "Developer",
-    blurb: "Shipping the smart-contract tooling behind the vault.",
+    title: "Alpha Vault Launched",
+    description:
+      "The vault opened its doors — the manifesto, the gating mechanism, and the first cohort of contributors.",
+    date: "Jul 2026",
   },
   {
-    name: "Femi O.",
-    xHandle: "femi_designs",
-    role: "Designer",
-    blurb: "The visual language behind Alpha Vault.",
+    title: "First Purge Day Completed",
+    description:
+      "Ran our first monthly access cycle end to end — invites sent, passive members cleared.",
+    date: "Jul 2026",
   },
   {
-    name: "Priya S.",
-    xHandle: "priya_alpha",
-    role: "Trading & Alpha",
-    blurb: "Surfaces the alpha before it reaches the crowd.",
+    title: "Gated Discord Hub Opened",
+    description:
+      "The inner Discord went live for approved members — alpha, NFT discussion, and deep collaboration in one room.",
+    date: "Aug 2026",
+  },
+  {
+    title: "50 Members Onboarded",
+    description:
+      "Crossed our first real membership milestone through the application pipeline.",
+    date: "Aug 2026",
   },
 ] as const;
