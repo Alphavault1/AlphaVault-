@@ -89,7 +89,21 @@ export function SignUpModal({ onSwitchToSignIn }: SignUpModalProps) {
       const { error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
-        options: { data: { x_handle: parsed.data.xHandle } },
+        options: {
+          data: { x_handle: parsed.data.xHandle },
+          // Explicit, not left to Supabase's dashboard "Site URL" default —
+          // that default is http://localhost:3000 on every new project, and
+          // depending on it silently breaks every confirmation email until
+          // someone notices and fixes it in the dashboard (exactly what
+          // happened here). window.location.origin always resolves to
+          // wherever this code is actually running — sandbox today, the
+          // client's own production domain later — so this can't drift out
+          // of sync with reality the way a dashboard default can. Supabase
+          // still validates this against its Redirect URLs allow-list
+          // server-side, so this doesn't bypass that configuration — it just
+          // stops us from depending on a separate setting being right too.
+          emailRedirectTo: window.location.origin,
+        },
       });
 
       if (error) {
