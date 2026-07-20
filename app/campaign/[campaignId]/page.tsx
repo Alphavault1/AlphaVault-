@@ -54,11 +54,12 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
     .maybeSingle();
   if (!campaign) notFound();
 
-  const { data: capacity } = await supabase
-    .from("campaign_capacity")
-    .select("occupied_entries, spots_left")
-    .eq("campaign_id", campaignId)
-    .maybeSingle();
+  // get_campaign_capacity is a SECURITY DEFINER FUNCTION (was a view — see
+  // the note in app/campaign/page.tsx). Explicitly typed for the same reason
+  // as the admin detail page — no generated Supabase database types here.
+  const { data: capacity } = (await supabase
+    .rpc("get_campaign_capacity", { p_campaign_id: campaignId })
+    .maybeSingle()) as { data: { occupied_entries: number; spots_left: number } | null };
 
   const { data: existingEntry } = await supabase
     .from("campaign_entries")

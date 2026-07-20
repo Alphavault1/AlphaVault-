@@ -42,13 +42,17 @@ export default async function AdminCampaignPage() {
   );
 
   const campaignIds = (campaigns ?? []).map((c) => c.id);
-  const { data: capacities } =
-    campaignIds.length > 0
-      ? await supabase
-          .from("campaign_capacity")
-          .select("campaign_id, occupied_entries")
-          .in("campaign_id", campaignIds)
-      : { data: [] as { campaign_id: string; occupied_entries: number }[] };
+  // get_campaign_capacity is a SECURITY DEFINER FUNCTION (was a view — see
+  // the note in app/campaign/page.tsx). This page is admin-only (gated by
+  // app/admin/campaign/layout.tsx), so is_admin() is true here — meaning
+  // this call returns capacity for EVERY campaign regardless of status, not
+  // just 'live' ones, matching what the dashboard needs to show. Explicitly
+  // typed: no generated Supabase database types in this project.
+  const { data: capacities } = campaignIds.length > 0
+    ? ((await supabase.rpc("get_campaign_capacity")) as {
+        data: { campaign_id: string; occupied_entries: number }[] | null;
+      })
+    : { data: [] as { campaign_id: string; occupied_entries: number }[] };
 
   const capacityByCampaign = new Map(
     (capacities ?? []).map((c) => [c.campaign_id, c.occupied_entries]),

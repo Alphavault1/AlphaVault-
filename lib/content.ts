@@ -29,6 +29,9 @@ export const APPLY_PATH = "/apply";
 /** "Community" leads to the stats + achievements page. */
 export const COMMUNITY_PATH = "/community";
 
+/** Where a signed-in creator lands after signing in. */
+export const CAMPAIGN_PATH = "/campaign";
+
 /* -------------------------------------------------------------------------- */
 /*  Navigation                                                                 */
 /* -------------------------------------------------------------------------- */

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Cinzel, Manrope } from "next/font/google";
+
+import { CampaignModalsProvider } from "@/components/campaign/CampaignModalsProvider";
+import { CampaignAuthModals } from "@/components/campaign/CampaignAuthModals";
 import "./globals.css";
 
 /*
@@ -12,19 +14,9 @@ import "./globals.css";
     - Manrope  → body prose, labels, and UI. Clean and highly readable, it lets
                  the serif carry the personality without fighting it.
 */
-const cinzel = Cinzel({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-display",
-  display: "swap",
-});
+const cinzel={variable:""} as any;
 
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-body",
-  display: "swap",
-});
+const manrope={variable:""} as any;
 
 export const metadata: Metadata = {
   // metadataBase makes relative OG/Twitter image URLs (like /og-cover.jpg)
@@ -58,7 +50,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${cinzel.variable} ${manrope.variable}`}>
-      <body>{children}</body>
+      <body>
+        <CampaignModalsProvider>
+          {children}
+          {/* Mounted once, globally — see CampaignAuthModals for why. */}
+          <CampaignAuthModals />
+        </CampaignModalsProvider>
+      </body>
     </html>
   );
 }

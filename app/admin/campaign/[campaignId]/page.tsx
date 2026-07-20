@@ -31,11 +31,16 @@ export default async function AdminCampaignDetailPage({
     .maybeSingle();
   if (!campaign) notFound();
 
-  const { data: capacity } = await supabase
-    .from("campaign_capacity")
-    .select("occupied_entries, accepted_entries, spots_left")
-    .eq("campaign_id", campaignId)
-    .maybeSingle();
+  // get_campaign_capacity is a SECURITY DEFINER FUNCTION (was a view — see
+  // the note in app/campaign/page.tsx). Explicitly typed: without generated
+  // Supabase database types (this project doesn't use codegen), .rpc()'s
+  // inferred type is an empty object, which TypeScript correctly refuses to
+  // let us read .occupied_entries etc. off of.
+  const { data: capacity } = (await supabase
+    .rpc("get_campaign_capacity", { p_campaign_id: campaignId })
+    .maybeSingle()) as {
+    data: { occupied_entries: number; accepted_entries: number; spots_left: number } | null;
+  };
 
   const { data: entriesRaw } = await supabase
     .from("campaign_entries")
