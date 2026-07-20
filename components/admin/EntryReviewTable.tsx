@@ -15,7 +15,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2, Search } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { reviewCampaignEntry } from "@/lib/actions/admin";
 
@@ -33,6 +33,20 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Matches by handle, submitted link, OR wallet — any one of the three is
+  // enough, since an admin might be searching from any of them (e.g.
+  // pasting in a wallet address to find who it belongs to).
+  const normalizedSearch = search.trim().toLowerCase();
+  const filteredEntries = normalizedSearch
+    ? entries.filter(
+        (e) =>
+          e.xHandle.toLowerCase().includes(normalizedSearch) ||
+          e.submissionUrl.toLowerCase().includes(normalizedSearch) ||
+          e.walletAddress.toLowerCase().includes(normalizedSearch),
+      )
+    : entries;
 
   async function handleReview(entryId: string, status: "accepted" | "rejected") {
     if (status === "rejected") {
@@ -66,13 +80,30 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
 
   return (
     <div className="space-y-3">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          type="text"
+          placeholder="Filter by handle, link, or wallet…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-xl border border-white/10 bg-black py-2.5 pl-10 pr-4 font-body text-sm text-white placeholder:text-muted focus:border-gold focus:outline-none"
+        />
+      </div>
+
       {error && (
         <p role="alert" className="font-body text-sm text-red-400">
           {error}
         </p>
       )}
 
-      {entries.map((entry) => (
+      {filteredEntries.length === 0 && (
+        <p className="rounded-2xl border border-white/5 bg-surface-900 p-8 text-center font-body text-slate">
+          No entries match &ldquo;{search}&rdquo;.
+        </p>
+      )}
+
+      {filteredEntries.map((entry) => (
         <div
           key={entry.id}
           className="flex flex-col gap-4 rounded-2xl border border-white/5 bg-surface-900 p-5 sm:flex-row sm:items-center sm:justify-between"

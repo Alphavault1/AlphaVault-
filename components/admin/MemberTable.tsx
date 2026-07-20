@@ -14,7 +14,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { setMemberBan, setMemberVerification } from "@/lib/actions/admin";
 
@@ -40,6 +40,14 @@ export function MemberTable({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [banDays, setBanDays] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState("");
+
+  // Normalized the same way X handles are treated everywhere else on this
+  // site — leading "@" ignored, case-insensitive.
+  const normalizedSearch = search.trim().replace(/^@/, "").toLowerCase();
+  const filteredMembers = normalizedSearch
+    ? members.filter((m) => m.xHandle.toLowerCase().includes(normalizedSearch))
+    : members;
 
   async function handleVerify(profileId: string, status: (typeof VERIFICATION_STATUSES)[number]) {
     setError(null);
@@ -71,13 +79,30 @@ export function MemberTable({
 
   return (
     <div className="space-y-3">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          type="text"
+          placeholder="Filter by X handle…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-xl border border-white/10 bg-black py-2.5 pl-10 pr-4 font-body text-sm text-white placeholder:text-muted focus:border-gold focus:outline-none"
+        />
+      </div>
+
       {error && (
         <p role="alert" className="font-body text-sm text-red-400">
           {error}
         </p>
       )}
 
-      {members.map((member) => {
+      {filteredMembers.length === 0 && (
+        <p className="rounded-2xl border border-white/5 bg-surface-900 p-8 text-center font-body text-slate">
+          No members match &ldquo;{search}&rdquo;.
+        </p>
+      )}
+
+      {filteredMembers.map((member) => {
         const isSelfOrAdmin = member.id === currentUserId || member.role === "admin";
         const isBanned = member.bannedUntil && new Date(member.bannedUntil) > new Date();
         const busy = pendingId === member.id;

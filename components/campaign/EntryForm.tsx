@@ -98,6 +98,12 @@ export function EntryForm({ campaignId }: EntryFormProps) {
         {errors.walletAddress && (
           <p className="mt-1.5 font-body text-xs text-red-400">{errors.walletAddress}</p>
         )}
+        {/* Chain-agnostic on purpose — the reference repo's version of this
+            warning hardcoded "Solana only," which doesn't apply here. */}
+        <p className="mt-1.5 font-body text-xs text-muted">
+          Double-check this before submitting — rewards are sent to exactly
+          what you enter, and can&rsquo;t be corrected once an entry is accepted.
+        </p>
       </div>
 
       {submitError && (

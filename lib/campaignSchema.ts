@@ -37,6 +37,15 @@ export const campaignFormSchema = z.object({
     .min(10, "At least 10 characters.")
     .max(1000, "Keep it under 1000 characters."),
   status: z.enum(["draft", "live", "closed"]),
+  // Optional — an example post or task-instructions link shown to members.
+  // Empty string normalizes to undefined so an unfilled field doesn't fail
+  // the URL check.
+  referenceUrl: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? undefined : v))
+    .pipe(z.string().url("Enter a valid link.").max(2048).optional())
+    .optional(),
 });
 
 export type CampaignFormInput = z.infer<typeof campaignFormSchema>;
@@ -82,3 +91,24 @@ export const verificationSchema = z.object({
 });
 
 export type VerificationInput = z.infer<typeof verificationSchema>;
+
+export const campaignReferenceSchema = z.object({
+  campaignId: z.string().uuid(),
+  // Empty string clears the reference link — a real, supported action, not
+  // treated as "invalid input."
+  referenceUrl: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : v))
+    .pipe(z.union([z.string().url("Enter a valid link.").max(2048), z.null()])),
+});
+
+export type CampaignReferenceInput = z.infer<typeof campaignReferenceSchema>;
+
+export const deleteCampaignSchema = z.object({
+  campaignId: z.string().uuid(),
+  // The literal word "DELETE", typed by the admin — checked client-side
+  // before the action is even called, and the campaignId/admin check is
+  // re-verified server-side regardless (see delete_campaign in the SQL).
+  confirmation: z.literal("DELETE"),
+});

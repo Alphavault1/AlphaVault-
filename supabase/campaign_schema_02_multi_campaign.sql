@@ -510,7 +510,7 @@ begin
   end if;
 
   return query
-  select profile.x_handle, entry.wallet_address, entry.submission_url, entry.reviewed_at
+  select profile.x_handle::text, entry.wallet_address, entry.submission_url, entry.reviewed_at
   from public.campaign_entries as entry
   join public.profiles as profile on profile.id = entry.profile_id
   where entry.campaign_id = p_campaign_id and entry.status = 'accepted'

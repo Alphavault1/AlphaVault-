@@ -7,6 +7,8 @@ import {
   banSchema,
   verificationSchema,
   campaignFormSchema,
+  campaignReferenceSchema,
+  deleteCampaignSchema,
 } from "@/lib/campaignSchema";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -104,6 +106,7 @@ export async function createCampaign(input: unknown): Promise<CreateCampaignResu
       disclaimer: parsed.data.disclaimer,
       status: parsed.data.status,
       created_by: user.id,
+      reference_url: parsed.data.referenceUrl ?? null,
     })
     .select("id")
     .single();
@@ -158,4 +161,93 @@ export async function getCampaignWalletExport(campaignId: string): Promise<Walle
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, rows: (data ?? []) as WalletExportRow[] };
+}
+
+/**
+ * updateCampaignReference
+ * -------------------------
+ * Sets, replaces, or clears the optional reference link on an existing
+ * campaign — a plain RLS-gated update (campaigns_update_admin), not an RPC;
+ * there's no multi-table side effect here the way delete_campaign has.
+ */
+export async function updateCampaignReference(input: unknown): Promise<ActionResult> {
+  const parsed = campaignReferenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase
+    .from("campaigns")
+    .update({ reference_url: parsed.data.referenceUrl })
+    .eq("id", parsed.data.campaignId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/campaign/${parsed.data.campaignId}`);
+  revalidatePath(`/campaign/${parsed.data.campaignId}`);
+  return { ok: true };
+}
+
+/**
+ * deleteCampaign
+ * ----------------
+ * The "type DELETE to confirm" check happens client-side (see
+ * DeleteCampaignButton) before this is even called — this schema re-checks
+ * it server-side too, so the action can't be invoked correctly without that
+ * exact literal, even by something bypassing the UI. The real safety net is
+ * still the delete_campaign RPC itself, which re-verifies admin access
+ * independently and reverses every affected profile's counters before
+ * anything is actually deleted (see supabase/campaign_schema_04_admin_
+ * features.sql for why that reversal has to happen inside the same
+ * transaction as the delete, not as a separate step).
+ */
+export async function deleteCampaign(input: unknown): Promise<ActionResult> {
+  const parsed = deleteCampaignSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Type DELETE exactly to confirm." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.rpc("delete_campaign", {
+    p_campaign_id: parsed.data.campaignId,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/campaign");
+  return { ok: true };
+}
+
+interface SubmissionExportRow {
+  x_handle: string;
+  submission_url: string;
+  status: string;
+  submitted_at: string;
+}
+
+type SubmissionExportResult =
+  | { ok: true; rows: SubmissionExportRow[] }
+  | { ok: false; error: string };
+
+/**
+ * getCampaignSubmissionsExport
+ * ------------------------------
+ * Unlike the wallet export (accepted entries only, for payouts), this
+ * returns EVERY entry in the campaign — pending, accepted, and rejected —
+ * for an admin doing a first-pass content review before formally deciding on
+ * anything. No wallet address in this one; it's about the submitted content,
+ * not the payout.
+ */
+export async function getCampaignSubmissionsExport(
+  campaignId: string,
+): Promise<SubmissionExportResult> {
+  const parsedId = z.string().uuid().safeParse(campaignId);
+  if (!parsedId.success) return { ok: false, error: "Invalid campaign." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("export_campaign_submissions", {
+    p_campaign_id: parsedId.data,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, rows: (data ?? []) as SubmissionExportRow[] };
 }

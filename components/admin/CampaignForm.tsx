@@ -20,6 +20,7 @@ export function CampaignForm() {
   const [rewardAmount, setRewardAmount] = useState("");
   const [disclaimer, setDisclaimer] = useState(DEFAULT_DISCLAIMER);
   const [status, setStatus] = useState<"draft" | "live" | "closed">("draft");
+  const [referenceUrl, setReferenceUrl] = useState("");
 
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function CampaignForm() {
       rewardAmount,
       disclaimer,
       status,
+      referenceUrl,
     });
 
     if (!parsed.success) {
@@ -160,6 +162,23 @@ export function CampaignForm() {
           <option value="live">Live — open for entries now</option>
           <option value="closed">Closed</option>
         </select>
+      </div>
+
+      <div>
+        <label htmlFor="cf-reference" className="mb-2 block font-body text-sm text-slate">
+          Reference link <span className="text-muted">(optional)</span>
+        </label>
+        <input
+          id="cf-reference"
+          type="url"
+          placeholder="https://x.com/example/status/..."
+          value={referenceUrl}
+          onChange={(e) => setReferenceUrl(e.target.value)}
+          className={inputBase}
+        />
+        {errors.referenceUrl && (
+          <p className="mt-1.5 font-body text-xs text-red-400">{errors.referenceUrl}</p>
+        )}
       </div>
 
       {submitError && (

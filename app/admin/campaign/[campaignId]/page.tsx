@@ -6,7 +6,9 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { CampaignStatusToggle } from "@/components/admin/CampaignStatusToggle";
-import { WalletExportButton } from "@/components/admin/WalletExportButton";
+import { ExportMenu } from "@/components/admin/ExportMenu";
+import { CampaignReferenceForm } from "@/components/admin/CampaignReferenceForm";
+import { DeleteCampaignButton } from "@/components/admin/DeleteCampaignButton";
 import { EntryReviewTable, type ReviewEntryRow } from "@/components/admin/EntryReviewTable";
 
 export const metadata: Metadata = {
@@ -26,7 +28,7 @@ export default async function AdminCampaignDetailPage({
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id, name, status, reward_amount, requirements, max_entries")
+    .select("id, name, status, reward_amount, requirements, max_entries, reference_url")
     .eq("id", campaignId)
     .maybeSingle();
   if (!campaign) notFound();
@@ -41,6 +43,9 @@ export default async function AdminCampaignDetailPage({
     .maybeSingle()) as {
     data: { occupied_entries: number; accepted_entries: number; spots_left: number } | null;
   };
+
+  const acceptedEntries = capacity?.accepted_entries ?? 0;
+  const totalPaid = campaign.reward_amount * acceptedEntries;
 
   const { data: entriesRaw } = await supabase
     .from("campaign_entries")
@@ -89,19 +94,37 @@ export default async function AdminCampaignDetailPage({
             <p className="mt-3 font-body text-slate">
               ${campaign.reward_amount.toLocaleString()} per accepted entry ·{" "}
               {capacity?.occupied_entries ?? 0}/{campaign.max_entries} filled ·{" "}
-              {capacity?.accepted_entries ?? 0} accepted
+              {acceptedEntries} accepted
+            </p>
+            {/* Cost tracking — reward × accepted entries. Pure display math
+                from data get_campaign_capacity() already returns; no new
+                schema needed for this one. */}
+            <p className="mt-1 font-display text-2xl text-gold">
+              ${totalPaid.toLocaleString()}{" "}
+              <span className="font-body text-sm text-slate">total paid</span>
             </p>
           </div>
 
           <div className="flex flex-col items-start gap-4 sm:items-end">
             <CampaignStatusToggle campaignId={campaign.id} currentStatus={campaign.status} />
-            <WalletExportButton campaignId={campaign.id} />
+            <ExportMenu campaignId={campaign.id} />
           </div>
+        </div>
+
+        <div className="mt-10 max-w-xl">
+          <CampaignReferenceForm campaignId={campaign.id} currentUrl={campaign.reference_url} />
         </div>
 
         <h2 className="mt-14 text-2xl uppercase leading-tight sm:text-3xl">Entries.</h2>
         <div className="mt-6">
           <EntryReviewTable entries={entries} />
+        </div>
+
+        <div className="mt-16 border-t border-white/5 pt-8">
+          <p className="mb-4 font-body text-xs uppercase tracking-wide text-slate">
+            Danger zone
+          </p>
+          <DeleteCampaignButton campaignId={campaign.id} />
         </div>
       </div>
     </main>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
@@ -49,7 +49,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries")
+    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url")
     .eq("id", campaignId)
     .maybeSingle();
   if (!campaign) notFound();
@@ -113,6 +113,18 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
               ))}
             </ul>
           </div>
+
+          {campaign.reference_url && (
+            <a
+              href={campaign.reference_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 rounded-full border border-gold/30 px-5 py-2.5 font-body text-sm text-gold transition-colors hover:border-gold/60 hover:bg-gold/5"
+            >
+              View reference
+              <ExternalLink size={14} />
+            </a>
+          )}
 
           <p className="mt-4 font-body text-xs leading-relaxed text-muted">
             {campaign.disclaimer}
