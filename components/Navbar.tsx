@@ -1,26 +1,5 @@
 "use client";
 
-/**
- * Navbar
- * ------
- * Sticky glassmorphism header. It's a client component for three reasons:
- *   1. A scroll listener that deepens the blur/border once the user leaves the
- *      hero, so the bar reads as "floating glass" only when there's content
- *      behind it.
- *   2. A mobile menu that animates open/closed with Framer Motion.
- *   3. A full-screen blurred scrim behind the open mobile menu that dims/blurs
- *      the page and doubles as the tap-anywhere-to-close target.
- *
- * IMPORTANT layering detail: the scrim is rendered as a SIBLING of <header>,
- * NOT inside it. The header has `backdrop-blur`, and any ancestor with
- * backdrop-filter/filter/transform becomes the containing block for
- * `position: fixed` descendants — which would shrink a `fixed inset-0` scrim
- * down to the header's little bar instead of the viewport, and also stop its
- * blur from seeing the page. Keeping the scrim outside the header makes it
- * viewport-sized and lets its backdrop blur work. z-index: page < scrim (40) <
- * header + menu (50).
- */
-
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -28,21 +7,52 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS, APPLY_PATH } from "@/lib/content";
 import vaultMark from "@/public/vault-mark.png";
+import { createBrowserClient } from "@supabase/ssr";
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  
+  // 🛠️ TOGGLE TO true TO FORCE THE "GO TO PORTAL" LINK ON THE LANDING PAGE LOCALLY
+  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  
   const reduceMotion = useReducedMotion();
 
+  // Safe client check to prevent runtime errors when environment variables aren't set
   useEffect(() => {
-    // Threshold is small so the transition happens right as the hero scrolls by.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    // Only attempt initializing if variables actually exist
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn("Supabase environment keys are missing. Running in localized state mode.");
+      return;
+    }
+
+    try {
+      const supabase = createBrowserClient(supabaseUrl, supabaseKey);
+
+      supabase.auth.getUser().then(({ data }) => {
+        if (data?.user) setIsLoggedIn(true);
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        setIsLoggedIn(!!session);
+      });
+
+      return () => subscription.unsubscribe();
+    } catch (err) {
+      console.error("Failed to initialize Supabase client:", err);
+    }
+  }, []);
+
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll(); // initialise on mount in case the page loads part-scrolled
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Escape closes the menu too — expected behaviour for a dismissible overlay.
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -52,10 +62,6 @@ export function Navbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  // Lock background scroll while the mobile menu is open. We pin the body with
-  // position:fixed (and restore the scroll offset on close) rather than
-  // `overflow:hidden`, because iOS Safari / iOS Chrome ignore overflow:hidden on
-  // the body and would let the page scroll behind the menu.
   useEffect(() => {
     if (!menuOpen) return;
     const scrollY = window.scrollY;
@@ -70,17 +76,6 @@ export function Navbar() {
       style.left = "";
       style.right = "";
 
-      // Restore the saved scroll position INSTANTLY, not animated. The site
-      // sets `scroll-behavior: smooth` globally, which would otherwise turn
-      // this restore into an animated scroll — and that animation runs at the
-      // exact same moment the mobile menu panel is also collapsing (its own
-      // 250ms height animation, right above). Two concurrent layout-changing
-      // animations is a reliable way to get the scroll animation interrupted
-      // mid-flight on mobile browsers, leaving the page stranded near the top
-      // instead of completing the trip back down to `scrollY`. Toggling
-      // scroll-behavior to "auto" just for this one call sidesteps that
-      // entirely — same technique Next.js uses internally for its own route
-      // transitions (see `disableSmoothScrollDuringRouteTransition`).
       const html = document.documentElement;
       const prevScrollBehavior = html.style.scrollBehavior;
       html.style.scrollBehavior = "auto";
@@ -89,23 +84,8 @@ export function Navbar() {
     };
   }, [menuOpen]);
 
-  // Close the mobile menu after any navigation so it never lingers over content.
   const closeMenu = () => setMenuOpen(false);
 
-  /**
-   * Mobile section links (#about, #manifesto, etc.) need custom handling
-   * instead of a plain anchor jump. Reason: while the mobile menu is open, the
-   * background-scroll-lock effect above pins <body> with position:fixed. When
-   * a link is tapped, the browser's native "jump to #hash" and our lock's
-   * cleanup (which restores the pre-lock scroll position) both fire at nearly
-   * the same moment — and the restore reliably wins that race, snapping the
-   * page back to where it was and making the tap look like it did nothing.
-   *
-   * Fix: prevent the native jump, close the menu, and — once the close
-   * animation + scroll-lock cleanup have had time to finish — scroll to the
-   * target ourselves. This removes the race entirely rather than trying to
-   * win it.
-   */
   function handleSectionLinkClick(
     e: React.MouseEvent<HTMLAnchorElement>,
     href: string,
@@ -116,14 +96,15 @@ export function Navbar() {
       () => {
         document
           .querySelector(href)
-          ?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+          .scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
       },
-      // Matches the mobile menu's own close-transition duration (0.25s) plus a
-      // small buffer, so the scroll only starts once the panel has actually
-      // collapsed and the lock's cleanup has already run.
       reduceMotion ? 0 : 320,
     );
   }
+
+  // Define dynamic button properties based on auth state
+  const ctaHref = isLoggedIn ? "/campaign" : APPLY_PATH;
+  const ctaLabel = isLoggedIn ? "Go to Portal" : "Enter the Vault";
 
   return (
     <>
@@ -134,9 +115,7 @@ export function Navbar() {
             : "border-b border-white/5 bg-black/40 backdrop-blur-md"
         }`}
       >
-        {/* Nav row — above the scrim (header is z-50) so it stays crisp/tappable. */}
         <nav className="container-vault flex h-16 items-center justify-between">
-          {/* Wordmark */}
           <a
             href="#top"
             onClick={(e) => handleSectionLinkClick(e, "#top")}
@@ -177,11 +156,13 @@ export function Navbar() {
                 </a>
               ),
             )}
+            
+            {/* Dynamic Auth CTA */}
             <Link
-              href={APPLY_PATH}
+              href={ctaHref}
               className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
             >
-              Enter the Vault
+              {ctaLabel}
             </Link>
           </div>
 
@@ -198,8 +179,7 @@ export function Navbar() {
           </button>
         </nav>
 
-        {/* Mobile menu panel — stays inside the header, dropping under the nav
-            row. Its own bg is nearly opaque so it reads fine regardless. */}
+        {/* Mobile menu panel */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
@@ -233,12 +213,14 @@ export function Navbar() {
                     </a>
                   ),
                 )}
+                
+                {/* Dynamic Auth CTA for Mobile */}
                 <Link
-                  href={APPLY_PATH}
+                  href={ctaHref}
                   onClick={closeMenu}
                   className="mt-2 rounded-full bg-gold px-5 py-3 text-center text-sm font-medium text-black"
                 >
-                  Enter the Vault
+                  {ctaLabel}
                 </Link>
               </div>
             </motion.div>
@@ -246,8 +228,7 @@ export function Navbar() {
         </AnimatePresence>
       </header>
 
-      {/* Scrim — deliberately a SIBLING of <header> (see file header comment).
-          Full-screen dim + blur, and the tap-anywhere-to-close target. */}
+      {/* Scrim */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
