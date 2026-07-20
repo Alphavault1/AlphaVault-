@@ -37,6 +37,7 @@ export function Navbar() {
   const reduceMotion = useReducedMotion();
   const { openSignIn } = useCampaignModals();
   const pathname = usePathname();
+  const onHomepage = pathname === "/";
 
   /**
    * Logo click — was a same-page "#top" anchor, which is why it only ever
@@ -187,16 +188,27 @@ export function Navbar() {
 
           {/* Desktop links */}
           <div className="hidden items-center gap-8 md:flex">
-            {NAV_LINKS.map((link) =>
-              link.kind === "route" ? (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm text-slate transition-colors hover:text-white"
-                >
-                  {link.label}
-                </Link>
-              ) : (
+            {NAV_LINKS.map((link) => {
+              if (link.kind === "route") {
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm text-slate transition-colors hover:text-white"
+                  >
+                    {link.label}
+                  </Link>
+                );
+              }
+              // Hash links (About/Manifesto/Ecosystem/Gating) only make sense
+              // as same-page anchors ON the homepage — those ids don't exist
+              // anywhere else. Off the homepage, this was a plain <a
+              // href="#about">, which does nothing at all (no navigation, no
+              // scroll) since there's nothing on the current page to jump to.
+              // A real Link to "/#about" fixes that: it navigates home, lands
+              // on that hash, and ScrollToHash (mounted on the homepage)
+              // finishes the job once the page has actually rendered.
+              return onHomepage ? (
                 <a
                   key={link.href}
                   href={link.href}
@@ -204,8 +216,16 @@ export function Navbar() {
                 >
                   {link.label}
                 </a>
-              ),
-            )}
+              ) : (
+                <Link
+                  key={link.href}
+                  href={`/${link.href}`}
+                  className="text-sm text-slate transition-colors hover:text-white"
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             <button
               type="button"
               onClick={openSignIn}
@@ -248,17 +268,20 @@ export function Navbar() {
               className="overflow-hidden border-t border-white/5 bg-black/90 backdrop-blur-xl md:hidden"
             >
               <div className="container-vault flex flex-col gap-1 py-4">
-                {NAV_LINKS.map((link) =>
-                  link.kind === "route" ? (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      onClick={closeMenu}
-                      className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
+                {NAV_LINKS.map((link) => {
+                  if (link.kind === "route") {
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={closeMenu}
+                        className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  }
+                  return onHomepage ? (
                     <a
                       key={link.href}
                       href={link.href}
@@ -267,8 +290,17 @@ export function Navbar() {
                     >
                       {link.label}
                     </a>
-                  ),
-                )}
+                  ) : (
+                    <Link
+                      key={link.href}
+                      href={`/${link.href}`}
+                      onClick={closeMenu}
+                      className="rounded-md px-2 py-3 text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
                 <button
                   type="button"
                   onClick={() => {

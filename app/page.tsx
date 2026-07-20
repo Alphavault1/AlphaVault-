@@ -6,6 +6,7 @@ import { Ecosystem } from "@/components/Ecosystem";
 import { PurgeDay } from "@/components/PurgeDay";
 import { CampaignCallout } from "@/components/CampaignCallout";
 import { Footer } from "@/components/Footer";
+import { ScrollToHash } from "@/components/ScrollToHash";
 
 /**
  * The landing page composition. Order follows the funnel: hook (Hero) → vision
@@ -21,6 +22,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
+      <ScrollToHash />
       <main>
         <Hero />
         <About />

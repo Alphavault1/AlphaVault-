@@ -41,7 +41,7 @@ export function Ecosystem() {
                 delay={i * 0.1}
                 className="group h-full"
               >
-                <div className="flex h-full flex-col rounded-2xl border border-white/5 bg-surface-900 p-8 transition-all duration-300 hover:-translate-y-1 hover:border-gold/30 hover:bg-surface-800">
+                <div className="flex h-full flex-col items-center rounded-2xl border border-white/5 bg-surface-900 p-8 text-center transition-all duration-300 hover:-translate-y-1 hover:border-gold/30 hover:bg-surface-800">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-black text-gold transition-colors duration-300 group-hover:border-gold/40">
                     <Icon size={22} strokeWidth={1.75} />
                   </span>

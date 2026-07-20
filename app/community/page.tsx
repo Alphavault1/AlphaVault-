@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { CommunityStats } from "@/components/CommunityStats";
@@ -37,7 +39,15 @@ export default function CommunityPage() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-ink" />
 
         <div className="container-vault">
-          <Reveal className="max-w-2xl">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
+          >
+            <ArrowLeft size={16} />
+            Back to home
+          </Link>
+
+          <Reveal className="mt-10 max-w-2xl">
             <SectionLabel>The Community</SectionLabel>
             <h1 className="mt-6 text-3xl uppercase leading-tight sm:text-4xl md:text-5xl">
               Proof it&rsquo;s real.
