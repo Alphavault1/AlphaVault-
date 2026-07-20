@@ -24,6 +24,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS, APPLY_PATH } from "@/lib/content";
@@ -35,6 +36,32 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const reduceMotion = useReducedMotion();
   const { openSignIn } = useCampaignModals();
+  const pathname = usePathname();
+
+  /**
+   * Logo click — was a same-page "#top" anchor, which is why it only ever
+   * worked from the homepage: on any other route there's no id="top" to
+   * scroll to, so nothing happened at all — not even a navigation home.
+   * Now: on any OTHER page, this is a real Link to "/" (Next.js resets
+   * scroll to top automatically on a route change, so that's covered for
+   * free). Only when ALREADY on "/" does it need to do anything itself —
+   * a same-route Link click is a no-op in Next.js, so this explicitly
+   * smooth-scrolls to top in that one case instead of relying on
+   * navigation that won't happen.
+   */
+  function handleLogoClick(e: React.MouseEvent) {
+    if (pathname === "/") {
+      e.preventDefault();
+      const html = document.documentElement;
+      const prevScrollBehavior = html.style.scrollBehavior;
+      html.style.scrollBehavior = "smooth";
+      window.scrollTo(0, 0);
+      window.setTimeout(() => {
+        html.style.scrollBehavior = prevScrollBehavior;
+      }, 600);
+    }
+    if (menuOpen) closeMenu();
+  }
 
   useEffect(() => {
     // Threshold is small so the transition happens right as the hero scrolls by.
@@ -139,11 +166,11 @@ export function Navbar() {
         {/* Nav row — above the scrim (header is z-50) so it stays crisp/tappable. */}
         <nav className="container-vault flex h-16 items-center justify-between">
           {/* Wordmark */}
-          <a
-            href="#top"
-            onClick={(e) => handleSectionLinkClick(e, "#top")}
+          <Link
+            href="/"
+            onClick={handleLogoClick}
             className="flex items-center gap-2.5"
-            aria-label="Alpha Vault — back to top"
+            aria-label="Alpha Vault — back to home"
           >
             <Image
               src={vaultMark}
@@ -156,7 +183,7 @@ export function Navbar() {
             <span className="font-display text-sm font-semibold uppercase tracking-[0.14em] text-white">
               Alpha Vault
             </span>
-          </a>
+          </Link>
 
           {/* Desktop links */}
           <div className="hidden items-center gap-8 md:flex">
@@ -284,4 +311,3 @@ export function Navbar() {
     </>
   );
 }
-

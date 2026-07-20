@@ -125,33 +125,29 @@ export const PILLARS: readonly Pillar[] = [
 
 export interface AccessStep {
   icon: LucideIcon;
-  step: string;
   title: string;
   description: string;
 }
 
 /**
- * These three steps ARE a real sequence (open channel → guarded core → monthly
- * reset), so the numbering encodes something true rather than decorating.
+ * Displayed as three centered, unnumbered cards — see PurgeDay.tsx for why
+ * the numbering these used to carry was removed.
  */
 export const ACCESS_STEPS: readonly AccessStep[] = [
   {
     icon: Radio,
-    step: "01",
     title: "The Open Radar",
     description:
       "Telegram stays open to everyone. It's the update channel — announcements, drops, and the signal that a Purge Day window is approaching.",
   },
   {
     icon: ShieldCheck,
-    step: "02",
     title: "The Guarded Core",
     description:
       "The inner Discord is heavily gated. Access isn't sold or farmed — it's extended to contributors who have already demonstrated value.",
   },
   {
     icon: Flame,
-    step: "03",
     title: "Purge Day",
     description:
       "On the last day of every month, invites are distributed and passive members are cleared out. Quality is preserved by design, not by hope.",

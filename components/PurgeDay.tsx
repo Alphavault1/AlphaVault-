@@ -2,11 +2,16 @@
  * PurgeDay
  * --------
  * The gating mechanism. Two parts:
- *   1. A three-step access sequence (open radar → guarded core → purge). Because
- *      this genuinely IS an ordered flow, the 01/02/03 markers carry real
- *      meaning here — unlike the ecosystem pillars, which are peers.
- *   2. A callout card pairing the FOMO copy with the live countdown to the next
- *      Purge Day, so the urgency is stated and demonstrated in the same breath.
+ *   1. Three access-mechanism cards (open radar, guarded core, purge day),
+ *      styled centered — icon, heading, and body text all center-aligned —
+ *      matching the page's other card sections rather than reading as a
+ *      numbered sequence. The 01/02/03 markers this used to carry were
+ *      removed for the same reason Ecosystem's pillars never had them: these
+ *      three things aren't steps in an order, they're three facets of one
+ *      mechanism, and numbering implied a sequence that isn't real.
+ *   2. A callout card pairing the FOMO copy with the live countdown to the
+ *      next Purge Day, so the urgency is stated and demonstrated in the same
+ *      breath.
  */
 
 import { Reveal } from "@/components/ui/Reveal";
@@ -34,16 +39,11 @@ export function PurgeDay() {
           {ACCESS_STEPS.map((step, i) => {
             const Icon = step.icon;
             return (
-              <Reveal key={step.step} as="article" delay={i * 0.1} className="h-full">
-                <div className="flex h-full flex-col rounded-2xl border border-white/5 bg-black p-8">
-                  <div className="flex items-center justify-between">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 text-gold">
-                      <Icon size={20} strokeWidth={1.75} />
-                    </span>
-                    <span className="font-body text-sm tracking-eyebrow text-white/20">
-                      {step.step}
-                    </span>
-                  </div>
+              <Reveal key={step.title} as="article" delay={i * 0.1} className="h-full">
+                <div className="flex h-full flex-col items-center rounded-2xl border border-white/5 bg-black p-8 text-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 text-gold">
+                    <Icon size={20} strokeWidth={1.75} />
+                  </span>
                   <h3 className="mt-6 font-body text-lg font-semibold text-white">
                     {step.title}
                   </h3>
