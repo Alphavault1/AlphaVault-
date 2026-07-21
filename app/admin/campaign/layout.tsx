@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 
 /**
  * Layout for every /admin/campaign/* route.
@@ -13,6 +14,10 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
  * visitor or a signed-in "creator" hitting /admin/campaign directly in the
  * browser bar gets redirected before the page's real content is ever sent to
  * their browser, not hidden with CSS after the fact.
+ *
+ * Also mounts AdminHeader — see that component for why. Previously this
+ * layout rendered nothing but the children, meaning there was no way to
+ * leave the admin section or sign out short of the browser's back button.
  */
 export default async function AdminCampaignLayout({
   children,
@@ -34,5 +39,10 @@ export default async function AdminCampaignLayout({
 
   if (!profile || profile.role !== "admin") redirect("/");
 
-  return <>{children}</>;
+  return (
+    <>
+      <AdminHeader />
+      {children}
+    </>
+  );
 }

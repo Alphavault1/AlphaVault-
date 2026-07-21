@@ -5,6 +5,7 @@ import { Clock, CheckCircle2, XCircle } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { CampaignCard } from "@/components/campaign/CampaignCard";
+import { SignOutButton } from "@/components/campaign/SignOutButton";
 
 export const metadata: Metadata = {
   title: "Campaign — Alpha Vault",
@@ -179,12 +180,12 @@ export default async function CampaignPage() {
           )}
 
           {profile.status !== "approved" && (
-            <Link
-              href="/"
-              className="mt-10 inline-block font-body text-sm text-slate transition-colors hover:text-white"
-            >
-              Back to home
-            </Link>
+            <div className="mt-10 flex items-center justify-center gap-6">
+              <Link href="/" className="font-body text-sm text-slate transition-colors hover:text-white">
+                Back to home
+              </Link>
+              <SignOutButton />
+            </div>
           )}
         </div>
 
@@ -218,13 +219,11 @@ export default async function CampaignPage() {
               </div>
             )}
 
-            <div className="mt-10 text-center">
-              <Link
-                href="/"
-                className="font-body text-sm text-slate transition-colors hover:text-white"
-              >
+            <div className="mt-10 flex items-center justify-center gap-6">
+              <Link href="/" className="font-body text-sm text-slate transition-colors hover:text-white">
                 Back to home
               </Link>
+              <SignOutButton />
             </div>
           </div>
         )}
