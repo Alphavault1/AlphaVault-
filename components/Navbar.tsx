@@ -29,6 +29,8 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS, APPLY_PATH } from "@/lib/content";
 import { useCampaignModals } from "@/components/campaign/CampaignModalsProvider";
+import { SignOutButton } from "@/components/campaign/SignOutButton";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import vaultMark from "@/public/vault-mark.png";
 
 export function Navbar() {
@@ -38,6 +40,28 @@ export function Navbar() {
   const { openSignIn } = useCampaignModals();
   const pathname = usePathname();
   const onHomepage = pathname === "/";
+
+  // Navbar previously had zero awareness of whether anyone was actually
+  // signed in — it always showed "Sign In" unconditionally, even right
+  // after using Back to home from a signed-in session. Checked once on
+  // mount, then kept in sync via Supabase's own auth-state subscription so
+  // it also updates live the moment someone signs in/out through a modal,
+  // without needing a full page reload.
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient();
+
+    supabase.auth.getUser().then(({ data }) => setIsSignedIn(!!data.user));
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsSignedIn(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   /**
    * Logo click — was a same-page "#top" anchor, which is why it only ever
@@ -226,13 +250,17 @@ export function Navbar() {
                 </Link>
               );
             })}
-            <button
-              type="button"
-              onClick={openSignIn}
-              className="text-sm text-slate transition-colors hover:text-white"
-            >
-              Sign In
-            </button>
+            {isSignedIn ? (
+              <SignOutButton className="text-sm text-slate transition-colors hover:text-white" />
+            ) : (
+              <button
+                type="button"
+                onClick={openSignIn}
+                className="text-sm text-slate transition-colors hover:text-white"
+              >
+                Sign In
+              </button>
+            )}
             <Link
               href={APPLY_PATH}
               className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
@@ -301,16 +329,20 @@ export function Navbar() {
                     </Link>
                   );
                 })}
-                <button
-                  type="button"
-                  onClick={() => {
-                    closeMenu();
-                    openSignIn();
-                  }}
-                  className="rounded-md px-2 py-3 text-left text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
-                >
-                  Sign In
-                </button>
+                {isSignedIn ? (
+                  <SignOutButton className="rounded-md px-2 py-3 text-left text-base text-slate transition-colors hover:bg-white/5 hover:text-white" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMenu();
+                      openSignIn();
+                    }}
+                    className="rounded-md px-2 py-3 text-left text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    Sign In
+                  </button>
+                )}
                 <Link
                   href={APPLY_PATH}
                   onClick={closeMenu}
