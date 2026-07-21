@@ -9,6 +9,7 @@ import {
   campaignFormSchema,
   campaignReferenceSchema,
   deleteCampaignSchema,
+  setMemberRoleSchema,
 } from "@/lib/campaignSchema";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -250,4 +251,29 @@ export async function getCampaignSubmissionsExport(
 
   if (error) return { ok: false, error: error.message };
   return { ok: true, rows: (data ?? []) as SubmissionExportRow[] };
+}
+
+/**
+ * setMemberRole
+ * ---------------
+ * Lets an existing admin promote or demote another member, without needing
+ * a developer to run raw SQL each time — see set_member_role in
+ * supabase/campaign_schema_05_role_management.sql for the actual guards
+ * (can't change your own role, can't demote the last remaining admin).
+ */
+export async function setMemberRole(input: unknown): Promise<ActionResult> {
+  const parsed = setMemberRoleSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.rpc("set_member_role", {
+    p_profile_id: parsed.data.profileId,
+    p_role: parsed.data.role,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/campaign/members");
+  return { ok: true };
 }

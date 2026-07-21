@@ -16,7 +16,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
-import { setMemberBan, setMemberVerification } from "@/lib/actions/admin";
+import { setMemberBan, setMemberVerification, setMemberRole } from "@/lib/actions/admin";
 
 export interface MemberRow {
   id: string;
@@ -77,6 +77,24 @@ export function MemberTable({
     router.refresh();
   }
 
+  async function handleRoleChange(profileId: string, role: "creator" | "admin") {
+    const confirmed = window.confirm(
+      role === "admin"
+        ? "Make this member an admin? They'll get full access to the campaign dashboard."
+        : "Remove admin access from this member?",
+    );
+    if (!confirmed) return;
+    setError(null);
+    setPendingId(profileId);
+    const result = await setMemberRole({ profileId, role });
+    setPendingId(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -103,7 +121,9 @@ export function MemberTable({
       )}
 
       {filteredMembers.map((member) => {
-        const isSelfOrAdmin = member.id === currentUserId || member.role === "admin";
+        const isSelf = member.id === currentUserId;
+        const isOtherAdmin = member.role === "admin" && !isSelf;
+        const canManageVerificationAndBan = !isSelf && member.role !== "admin";
         const isBanned = member.bannedUntil && new Date(member.bannedUntil) > new Date();
         const busy = pendingId === member.id;
 
@@ -123,7 +143,7 @@ export function MemberTable({
               </p>
             </div>
 
-            {!isSelfOrAdmin && (
+            {canManageVerificationAndBan && (
               <div className="flex flex-wrap items-center gap-2">
                 {VERIFICATION_STATUSES.map((s) => (
                   <button
@@ -176,7 +196,27 @@ export function MemberTable({
                     </button>
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => handleRoleChange(member.id, "admin")}
+                  disabled={busy}
+                  className="inline-flex items-center gap-1 rounded-full border border-gold/30 px-3 py-1.5 font-body text-xs text-gold transition-colors hover:border-gold/60 hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Make admin
+                </button>
               </div>
+            )}
+
+            {isOtherAdmin && (
+              <button
+                type="button"
+                onClick={() => handleRoleChange(member.id, "creator")}
+                disabled={busy}
+                className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1.5 font-body text-xs text-white transition-colors hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {busy ? <Loader2 size={12} className="animate-spin" /> : "Remove admin"}
+              </button>
             )}
           </div>
         );

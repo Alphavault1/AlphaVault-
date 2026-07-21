@@ -14,12 +14,13 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 
-type CampaignModalKind = "signin" | "signup" | null;
+type CampaignModalKind = "signin" | "signup" | "reset" | null;
 
 interface CampaignModalsContextValue {
   openModal: CampaignModalKind;
   openSignIn: () => void;
   openSignUp: () => void;
+  openReset: () => void;
   close: () => void;
 }
 
@@ -34,6 +35,7 @@ export function CampaignModalsProvider({ children }: { children: ReactNode }) {
     openModal,
     openSignIn: () => setOpenModal("signin"),
     openSignUp: () => setOpenModal("signup"),
+    openReset: () => setOpenModal("reset"),
     close: () => setOpenModal(null),
   };
 

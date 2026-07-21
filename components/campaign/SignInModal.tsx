@@ -15,10 +15,8 @@
  * the "select own" RLS policy — see supabase/campaign_schema.sql) to decide
  * where to send them: admin -> /admin/campaign, creator -> /campaign.
  *
- * "Forgot password?" is a real, honest placeholder rather than a broken
- * link: the actual reset flow (with the admin-account exception the spec
- * calls for) is Phase 4, not built yet, so clicking it reveals an inline note
- * saying so instead of navigating to a page that doesn't exist.
+ * "Forgot password?" opens ForgotPasswordModal (a real reset flow using
+ * Supabase's own resetPasswordForEmail), not a placeholder anymore.
  */
 
 import { useState } from "react";
@@ -35,18 +33,23 @@ const inputBase =
 
 interface SignInModalProps {
   onSwitchToSignUp: () => void;
+  onSwitchToReset: () => void;
   onSuccess: () => void;
   onClose: () => void;
 }
 
-export function SignInModal({ onSwitchToSignUp, onSuccess, onClose }: SignInModalProps) {
+export function SignInModal({
+  onSwitchToSignUp,
+  onSwitchToReset,
+  onSuccess,
+  onClose,
+}: SignInModalProps) {
   const router = useRouter();
   const [xHandle, setXHandle] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting">("idle");
-  const [showForgotNote, setShowForgotNote] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -163,17 +166,11 @@ export function SignInModal({ onSwitchToSignUp, onSuccess, onClose }: SignInModa
 
         <button
           type="button"
-          onClick={() => setShowForgotNote((v) => !v)}
+          onClick={onSwitchToReset}
           className="mt-2 font-body text-sm text-bronze transition-colors hover:text-gold"
         >
           Forgot password?
         </button>
-        {showForgotNote && (
-          <p className="mt-2 font-body text-xs leading-relaxed text-muted">
-            Password reset isn&rsquo;t live yet — this is coming in a future
-            update. Reach out via Telegram or X in the meantime.
-          </p>
-        )}
       </div>
 
       {submitError && (

@@ -112,3 +112,8 @@ export const deleteCampaignSchema = z.object({
   // re-verified server-side regardless (see delete_campaign in the SQL).
   confirmation: z.literal("DELETE"),
 });
+
+export const setMemberRoleSchema = z.object({
+  profileId: z.string().uuid(),
+  role: z.enum(["creator", "admin"]),
+});
