@@ -30,15 +30,14 @@ begin
     raise exception using errcode = '22023', message = 'Role must be creator or admin';
   end if;
 
-  if p_profile_id = auth.uid() then
-    raise exception using errcode = '22023', message = 'You cannot change your own role';
-  end if;
-
   -- Guards against a real lockout scenario: if this change would demote the
   -- only remaining admin, every admin page becomes unreachable — nobody
-  -- left with access to undo it. Only relevant when actually demoting
-  -- someone who is currently an admin; promoting someone, or demoting a
-  -- non-admin (a no-op), never needs this check.
+  -- left with access to undo it. This applies whether the admin is
+  -- demoting themselves or someone else — the risk is identical either way,
+  -- so unlike an earlier version of this function, self-demotion is NOT
+  -- blocked outright anymore. It's blocked only in the one case that
+  -- actually matters: when it would leave zero admins. Promoting someone,
+  -- or demoting a non-admin (a no-op for this check), never needs it.
   if p_role = 'creator' then
     if exists (select 1 from public.profiles where id = p_profile_id and role = 'admin') then
       select count(*) into admin_count from public.profiles where role = 'admin';

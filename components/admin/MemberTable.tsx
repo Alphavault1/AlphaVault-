@@ -78,10 +78,13 @@ export function MemberTable({
   }
 
   async function handleRoleChange(profileId: string, role: "creator" | "admin") {
+    const isRemovingOwnAccess = role === "creator" && profileId === currentUserId;
     const confirmed = window.confirm(
       role === "admin"
         ? "Make this member an admin? They'll get full access to the campaign dashboard."
-        : "Remove admin access from this member?",
+        : isRemovingOwnAccess
+          ? "Remove your OWN admin access? You'll be signed out of the admin dashboard immediately — make sure another admin can already get in."
+          : "Remove admin access from this member?",
     );
     if (!confirmed) return;
     setError(null);
@@ -122,7 +125,12 @@ export function MemberTable({
 
       {filteredMembers.map((member) => {
         const isSelf = member.id === currentUserId;
-        const isOtherAdmin = member.role === "admin" && !isSelf;
+        // No longer excludes self — the RPC allows demoting yourself as
+        // long as at least one other admin exists, so the button should be
+        // visible for your own admin row too. If you happen to be the last
+        // admin, the RPC's own "Cannot remove the last remaining admin"
+        // error surfaces naturally rather than the UI trying to predict it.
+        const isAdminRow = member.role === "admin";
         const canManageVerificationAndBan = !isSelf && member.role !== "admin";
         const isBanned = member.bannedUntil && new Date(member.bannedUntil) > new Date();
         const busy = pendingId === member.id;
@@ -208,7 +216,7 @@ export function MemberTable({
               </div>
             )}
 
-            {isOtherAdmin && (
+            {isAdminRow && (
               <button
                 type="button"
                 onClick={() => handleRoleChange(member.id, "creator")}
