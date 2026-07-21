@@ -29,7 +29,6 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { NAV_LINKS, APPLY_PATH } from "@/lib/content";
 import { useCampaignModals } from "@/components/campaign/CampaignModalsProvider";
-import { SignOutButton } from "@/components/campaign/SignOutButton";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import vaultMark from "@/public/vault-mark.png";
 
@@ -47,17 +46,40 @@ export function Navbar() {
   // mount, then kept in sync via Supabase's own auth-state subscription so
   // it also updates live the moment someone signs in/out through a modal,
   // without needing a full page reload.
+  //
+  // Also tracks role now, not just signed-in/out — needed so the "Enter the
+  // Vault" CTA can become a "Dashboard" link that actually goes somewhere
+  // useful once signed in, routed correctly for an admin vs a regular
+  // member, rather than continuing to point at the application form for
+  // people who've already been through it.
   const [isSignedIn, setIsSignedIn] = useState(false);
+  const [role, setRole] = useState<"admin" | "creator" | null>(null);
+  const dashboardHref = role === "admin" ? "/admin/campaign" : "/campaign";
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
 
-    supabase.auth.getUser().then(({ data }) => setIsSignedIn(!!data.user));
+    async function loadAuthState() {
+      const { data } = await supabase.auth.getUser();
+      setIsSignedIn(!!data.user);
+      if (!data.user) {
+        setRole(null);
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      setRole((profile?.role as "admin" | "creator") ?? "creator");
+    }
+
+    loadAuthState();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsSignedIn(!!session);
+    } = supabase.auth.onAuthStateChange(() => {
+      loadAuthState();
     });
 
     return () => subscription.unsubscribe();
@@ -251,7 +273,12 @@ export function Navbar() {
               );
             })}
             {isSignedIn ? (
-              <SignOutButton className="text-sm text-slate transition-colors hover:text-white" />
+              <Link
+                href={dashboardHref}
+                className="text-sm text-slate transition-colors hover:text-white"
+              >
+                Dashboard
+              </Link>
             ) : (
               <button
                 type="button"
@@ -261,6 +288,13 @@ export function Navbar() {
                 Sign In
               </button>
             )}
+            {/* Always visible, regardless of Campaign sign-in state — this
+                leads to /apply, the Discord community application, which is
+                a separate thing from the Campaign system. Someone signed
+                into their Campaign dashboard may still never have applied
+                for Discord access, so hiding this once signed in (an
+                earlier version of this fix did) would have quietly taken
+                away a path they still need. */}
             <Link
               href={APPLY_PATH}
               className="rounded-full bg-gold px-5 py-2 text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
@@ -330,7 +364,13 @@ export function Navbar() {
                   );
                 })}
                 {isSignedIn ? (
-                  <SignOutButton className="rounded-md px-2 py-3 text-left text-base text-slate transition-colors hover:bg-white/5 hover:text-white" />
+                  <Link
+                    href={dashboardHref}
+                    onClick={closeMenu}
+                    className="rounded-md px-2 py-3 text-left text-base text-slate transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    Dashboard
+                  </Link>
                 ) : (
                   <button
                     type="button"
