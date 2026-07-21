@@ -31,10 +31,9 @@ export function SignOutButton({ className }: { className?: string }) {
       type="button"
       onClick={handleSignOut}
       disabled={pending}
-      className={
-        className ??
-        "inline-flex items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white disabled:opacity-50"
-      }
+      className={`inline-flex items-center gap-2 whitespace-nowrap disabled:opacity-50 ${
+        className ?? "font-body text-sm text-slate transition-colors hover:text-white"
+      }`}
     >
       {pending ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
       Sign out
