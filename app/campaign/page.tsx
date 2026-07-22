@@ -40,10 +40,17 @@ export default async function CampaignPage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "x_handle, status, total_earnings, campaigns_entered, campaigns_accepted, campaigns_rejected",
+      "x_handle, role, status, total_earnings, campaigns_entered, campaigns_accepted, campaigns_rejected",
     )
     .eq("id", user.id)
     .maybeSingle();
+
+  // Admins land here too now (sign-in no longer decides this client-side —
+  // see SignInModal's own comment on why), so this is where that routing
+  // actually happens: server-side, using a profile fetch this page already
+  // needed to do for its own rendering regardless. No extra query, no extra
+  // round trip — just an additional check against data already in hand.
+  if (profile?.role === "admin") redirect("/admin/campaign");
 
   // The signup trigger should always create this row. If it's somehow
   // missing, something went wrong server-side — safest is to send them home
@@ -60,12 +67,13 @@ export default async function CampaignPage() {
     requirements: string[];
     max_entries: number;
     occupied_entries: number;
+    end_date: string | null;
   }[] = [];
 
   if (profile.status === "approved") {
     const { data: campaigns } = await supabase
       .from("campaigns")
-      .select("id, name, status, reward_amount, requirements, max_entries")
+      .select("id, name, status, reward_amount, requirements, max_entries, end_date")
       .eq("status", "live")
       .order("created_at", { ascending: false });
 
@@ -214,6 +222,7 @@ export default async function CampaignPage() {
                     requirementsCount={campaign.requirements.length}
                     maxEntries={campaign.max_entries}
                     occupiedEntries={campaign.occupied_entries}
+                    endDate={campaign.end_date}
                   />
                 ))}
               </div>

@@ -46,6 +46,22 @@ export const campaignFormSchema = z.object({
     .transform((v) => (v === "" ? undefined : v))
     .pipe(z.string().url("Enter a valid link.").max(2048).optional())
     .optional(),
+  // Optional — an HTML date input's value is always "" or "YYYY-MM-DD".
+  // Empty stays optional/undefined (no deadline); a real date gets parsed
+  // and pushed to the end of that day, so "ends July 22" means through the
+  // end of July 22 in the browser's own timezone, not the first second of
+  // it.
+  endDate: z
+    .string()
+    .trim()
+    .transform((v) => {
+      if (v === "") return undefined;
+      const parsed = new Date(v);
+      parsed.setHours(23, 59, 59, 999);
+      return parsed;
+    })
+    .pipe(z.date().optional())
+    .optional(),
 });
 
 export type CampaignFormInput = z.infer<typeof campaignFormSchema>;

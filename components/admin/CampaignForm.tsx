@@ -21,6 +21,7 @@ export function CampaignForm() {
   const [disclaimer, setDisclaimer] = useState(DEFAULT_DISCLAIMER);
   const [status, setStatus] = useState<"draft" | "live" | "closed">("draft");
   const [referenceUrl, setReferenceUrl] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -38,6 +39,7 @@ export function CampaignForm() {
       disclaimer,
       status,
       referenceUrl,
+      endDate,
     });
 
     if (!parsed.success) {
@@ -133,6 +135,22 @@ export function CampaignForm() {
       </div>
 
       <div>
+        <label htmlFor="cf-end-date" className="mb-2 block font-body text-sm text-slate">
+          Ends on <span className="text-muted">(optional — runs until manually closed or full otherwise)</span>
+        </label>
+        <input
+          id="cf-end-date"
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className={inputBase}
+        />
+        {errors.endDate && (
+          <p className="mt-1.5 font-body text-xs text-red-400">{errors.endDate}</p>
+        )}
+      </div>
+
+      <div>
         <label htmlFor="cf-disclaimer" className="mb-2 block font-body text-sm text-slate">
           Disclaimer
         </label>
@@ -166,7 +184,7 @@ export function CampaignForm() {
 
       <div>
         <label htmlFor="cf-reference" className="mb-2 block font-body text-sm text-slate">
-          Reference link <span className="text-muted">(optional)</span>
+          Reference link
         </label>
         <input
           id="cf-reference"

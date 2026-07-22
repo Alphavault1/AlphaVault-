@@ -49,7 +49,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url")
+    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url, end_date")
     .eq("id", campaignId)
     .maybeSingle();
   if (!campaign) notFound();
@@ -69,6 +69,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
     .maybeSingle();
 
   const spotsLeft = capacity?.spots_left ?? 0;
+  const hasEnded = campaign.end_date ? new Date(campaign.end_date) <= new Date() : false;
 
   return (
     <main className="relative overflow-hidden py-24">
@@ -132,6 +133,19 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
           <p className="mt-6 font-body text-sm text-slate">
             {spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left
+            {campaign.end_date && (
+              <>
+                {" "}
+                ·{" "}
+                {hasEnded
+                  ? "Ended"
+                  : `Ends ${new Date(campaign.end_date).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    })}`}
+              </>
+            )}
           </p>
 
           <div className="mt-8">
@@ -158,13 +172,19 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
               </div>
             )}
 
-            {profile.status === "approved" && !existingEntry && spotsLeft <= 0 && (
+            {profile.status === "approved" && !existingEntry && hasEnded && (
+              <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
+                This campaign has ended.
+              </p>
+            )}
+
+            {profile.status === "approved" && !existingEntry && !hasEnded && spotsLeft <= 0 && (
               <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
                 This campaign is full.
               </p>
             )}
 
-            {profile.status === "approved" && !existingEntry && spotsLeft > 0 && (
+            {profile.status === "approved" && !existingEntry && !hasEnded && spotsLeft > 0 && (
               <EntryForm campaignId={campaign.id} />
             )}
           </div>

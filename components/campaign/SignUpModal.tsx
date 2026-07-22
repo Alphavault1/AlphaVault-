@@ -48,6 +48,11 @@ export function SignUpModal({ onSwitchToSignIn, onClose }: SignUpModalProps) {
   const [status, setStatus] = useState<"idle" | "submitting" | "success">(
     "idle",
   );
+  // Supabase tells us this directly in the signUp response — data.session is
+  // null when confirmation is required, present when it isn't. Using that
+  // real signal means the success message can state what actually happened,
+  // rather than hedging with "if" about something the app already knows.
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(true);
 
   // Live match check — independent of the zod validation, so it updates on
   // every keystroke rather than only at submit time.
@@ -88,7 +93,7 @@ export function SignUpModal({ onSwitchToSignIn, onClose }: SignUpModalProps) {
 
     try {
       const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: parsed.data.email,
         password: parsed.data.password,
         options: {
@@ -121,6 +126,8 @@ export function SignUpModal({ onSwitchToSignIn, onClose }: SignUpModalProps) {
         return;
       }
 
+      setNeedsEmailConfirmation(!data.session);
+
       setStatus("success");
     } catch {
       setSubmitError("Network error — check your connection and try again.");
@@ -138,8 +145,9 @@ export function SignUpModal({ onSwitchToSignIn, onClose }: SignUpModalProps) {
           Account created.
         </p>
         <p className="mt-3 font-body text-[15px] leading-relaxed text-slate">
-          If email confirmation is required, check your inbox for a link
-          before signing in. Otherwise, you&rsquo;re ready to go.
+          {needsEmailConfirmation
+            ? "Check your inbox for a confirmation link before signing in."
+            : "You're all set — sign in whenever you're ready."}
         </p>
         <button
           type="button"

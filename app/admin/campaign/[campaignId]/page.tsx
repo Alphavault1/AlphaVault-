@@ -28,7 +28,7 @@ export default async function AdminCampaignDetailPage({
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id, name, status, reward_amount, requirements, max_entries, reference_url")
+    .select("id, name, status, reward_amount, requirements, max_entries, reference_url, end_date")
     .eq("id", campaignId)
     .maybeSingle();
   if (!campaign) notFound();
@@ -95,6 +95,19 @@ export default async function AdminCampaignDetailPage({
               ${campaign.reward_amount.toLocaleString()} per accepted entry ·{" "}
               {capacity?.occupied_entries ?? 0}/{campaign.max_entries} filled ·{" "}
               {acceptedEntries} accepted
+              {campaign.end_date && (
+                <>
+                  {" "}
+                  ·{" "}
+                  {new Date(campaign.end_date) <= new Date()
+                    ? "Ended"
+                    : `Ends ${new Date(campaign.end_date).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}`}
+                </>
+              )}
             </p>
             {/* Cost tracking — reward × accepted entries. Pure display math
                 from data get_campaign_capacity() already returns; no new

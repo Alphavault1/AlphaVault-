@@ -10,11 +10,9 @@
  * Data comes from lib/content, so the markup is a pure map over PILLARS.
  */
 
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { Reveal } from "@/components/ui/Reveal";
 import { SectionLabel } from "@/components/ui/SectionLabel";
-import { PILLARS, COMMUNITY_PATH } from "@/lib/content";
+import { PILLARS } from "@/lib/content";
 
 export function Ecosystem() {
   return (
@@ -57,33 +55,6 @@ export function Ecosystem() {
             );
           })}
         </div>
-
-        {/* Community callout — deliberately NOT a new section. Extending
-            Ecosystem here (hairline divider, no new background/padding block)
-            keeps this page's length exactly as it was: "here's what's
-            inside" (the pillars above) naturally continues into "here's who's
-            actually in it," rather than costing a whole new scroll-length
-            section for one link. Same reasoning as the Purge Day countdown
-            living inside the Gating Mechanism section instead of its own. */}
-        <Reveal delay={0.3} className="mt-14 border-t border-white/5 pt-10">
-          <div className="flex flex-col items-center justify-between gap-6 text-center sm:flex-row sm:text-left">
-            <div>
-              <p className="font-body text-xs uppercase tracking-eyebrow text-bronze">
-                Meet the people building it
-              </p>
-              <p className="mt-2 font-body text-lg text-white">
-                Real members, real contributors — see who&rsquo;s inside.
-              </p>
-            </div>
-            <Link
-              href={COMMUNITY_PATH}
-              className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-gold px-6 py-3 font-body text-sm font-medium text-black transition-shadow hover:shadow-gold-glow"
-            >
-              See the Community
-              <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </Reveal>
       </div>
     </section>
   );

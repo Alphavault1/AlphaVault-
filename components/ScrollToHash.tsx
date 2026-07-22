@@ -4,9 +4,10 @@
  * ScrollToHash
  * -------------
  * Mounted once on the homepage. Its only job: if you arrive at "/" with a
- * hash already in the URL (e.g. someone on /community clicked "Ecosystem" in
- * the nav, which now navigates to "/#ecosystem" instead of doing nothing —
- * see Navbar.tsx), make sure the browser actually lands on that section.
+ * hash already in the URL (e.g. someone on the /apply page clicked
+ * "Ecosystem" in the nav, which now navigates to "/#ecosystem" instead of
+ * doing nothing — see Navbar.tsx), make sure the browser actually lands on
+ * that section.
  *
  * This isn't purely decorative — Next.js's own hash-scroll-after-navigation
  * behavior can fire before the page's content has fully settled (particularly

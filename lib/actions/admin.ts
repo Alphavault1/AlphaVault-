@@ -108,6 +108,7 @@ export async function createCampaign(input: unknown): Promise<CreateCampaignResu
       status: parsed.data.status,
       created_by: user.id,
       reference_url: parsed.data.referenceUrl ?? null,
+      end_date: parsed.data.endDate?.toISOString() ?? null,
     })
     .select("id")
     .single();

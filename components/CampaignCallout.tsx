@@ -15,8 +15,6 @@
  * and before the Footer — so a visitor reads "that's the exclusive vault"
  * first, and only then "there's also a free way in" as a clearly separate
  * idea, not a confusing alternative sitting right next to the strict pitch.
- * Copy names the contrast explicitly ("Prefer to start free?") rather than
- * leaving the reader to infer it.
  *
  * Kept deliberately light — lighter vertical padding than the page's main
  * narrative sections (which use py-24/32) — since this is a secondary path,
@@ -25,7 +23,6 @@
 
 import { Megaphone } from "lucide-react";
 import { useCampaignModals } from "@/components/campaign/CampaignModalsProvider";
-import { SectionLabel } from "@/components/ui/SectionLabel";
 import { Reveal } from "@/components/ui/Reveal";
 
 export function CampaignCallout() {
@@ -40,8 +37,7 @@ export function CampaignCallout() {
           </span>
 
           <div>
-            <SectionLabel>Prefer to start free?</SectionLabel>
-            <h2 className="mt-4 text-2xl uppercase leading-tight sm:text-3xl">
+            <h2 className="text-2xl uppercase leading-tight sm:text-3xl">
               Join the Campaign.
             </h2>
             <p className="mx-auto mt-4 max-w-md font-body text-base leading-relaxed text-slate">

@@ -109,17 +109,16 @@ export function SignInModal({
         return;
       }
 
-      // Step 3 — read the user's OWN profile row to decide where to send
-      // them. Allowed by the "select own" RLS policy: auth.uid() now matches
-      // this row's id, since we just established a session for it.
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", signInData.user.id)
-        .maybeSingle();
-
+      // Used to be a third step here: querying this user's own profile row
+      // just to decide between "/campaign" and "/admin/campaign" — a whole
+      // extra sequential network round trip, purely for a routing decision.
+      // /campaign already needs to fetch this same profile row for its own
+      // rendering (stats, status), so that page now does the admin check
+      // itself, server-side, using data it was fetching anyway. Landing here
+      // unconditionally cuts sign-in from three sequential round trips to
+      // two — a real reduction, not just a loading-state improvement.
       onSuccess();
-      router.push(profile?.role === "admin" ? "/admin/campaign" : "/campaign");
+      router.push("/campaign");
     } catch {
       setSubmitError("Network error — check your connection and try again.");
       setStatus("idle");

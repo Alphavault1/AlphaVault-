@@ -10,6 +10,15 @@ interface CampaignCardProps {
   requirementsCount: number;
   maxEntries: number;
   occupiedEntries: number;
+  endDate?: string | null;
+}
+
+function formatEndDate(endDate: string): string {
+  const daysLeft = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000);
+  if (daysLeft < 0) return "Ended";
+  if (daysLeft === 0) return "Ends today";
+  if (daysLeft === 1) return "Ends tomorrow";
+  return `${daysLeft} days left`;
 }
 
 export function CampaignCard({
@@ -20,6 +29,7 @@ export function CampaignCard({
   requirementsCount,
   maxEntries,
   occupiedEntries,
+  endDate,
 }: CampaignCardProps) {
   const spotsLeft = Math.max(0, maxEntries - occupiedEntries);
   const percentFull = Math.min(100, (occupiedEntries / maxEntries) * 100);
@@ -37,6 +47,7 @@ export function CampaignCard({
       <p className="mt-2 font-body text-sm text-slate">
         {requirementsCount} requirement{requirementsCount === 1 ? "" : "s"} ·{" "}
         {spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left
+        {endDate && <> · {formatEndDate(endDate)}</>}
       </p>
 
       <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">

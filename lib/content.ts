@@ -26,9 +26,6 @@ import {
 /** "Enter the Vault" leads to the real application form at /apply. */
 export const APPLY_PATH = "/apply";
 
-/** "Community" leads to the stats + achievements page. */
-export const COMMUNITY_PATH = "/community";
-
 /** Where a signed-in creator lands after signing in. */
 export const CAMPAIGN_PATH = "/campaign";
 
@@ -43,8 +40,10 @@ export interface NavLink {
   /**
    * "route" = a real Next.js page (rendered with next/link, a full
    * navigation). Omitted (the default) = a same-page hash anchor, handled by
-   * Navbar's scroll logic. Community is the one real route mixed in among the
-   * section anchors, so it needs to be tagged explicitly rather than assumed.
+   * Navbar's scroll logic. No route-kind links remain right now (Community
+   * was the only one, removed along with its page) — kept as a type option
+   * since a future real route among these nav items is a reasonable thing
+   * to need again.
    */
   kind?: "route";
 }
@@ -53,7 +52,6 @@ export const NAV_LINKS: readonly NavLink[] = [
   { label: "About", href: "#about" },
   { label: "Manifesto", href: "#manifesto" },
   { label: "Ecosystem", href: "#ecosystem" },
-  { label: "Community", href: COMMUNITY_PATH, kind: "route" },
   { label: "Gating Mechanism", href: "#gating" },
 ] as const;
 
@@ -175,72 +173,3 @@ export const SOCIAL_LINKS: readonly SocialLink[] = [
  * so the two are genuinely distinct destinations.
  */
 export const TELEGRAM_URL = "https://telegram.org";
-
-/* -------------------------------------------------------------------------- */
-/*  Community — stats strip + achievements (/community)                       */
-/* -------------------------------------------------------------------------- */
-
-export interface CommunityStat {
-  label: string;
-  value: string;
-}
-
-/**
- * PLACEHOLDER NUMBERS. These are entered by hand (not pulled from a live
- * source — no Discord API, no Supabase count wired up here), so they only stay
- * accurate if updated manually as the community grows. Replace the `value`
- * strings with real figures before this page is considered final.
- *
- * The third stat is deliberately labeled "Contributors" rather than
- * "Contributors Spotlighted" — the client asked to drop the public spotlight
- * section itself (the grid of individual profiles that used to sit below this
- * strip), but keep tracking this number. A label that still said "Spotlighted"
- * would reference a feature that no longer exists on the page, which is the
- * kind of small inconsistency worth avoiding.
- */
-export const COMMUNITY_STATS: readonly CommunityStat[] = [
-  { label: "Members", value: "—" },
-  { label: "Applications Reviewed", value: "—" },
-  { label: "Contributors", value: "—" },
-] as const;
-
-export interface Achievement {
-  title: string;
-  description: string;
-  /** Freeform, e.g. "Jul 2026" — not a real Date, so it's easy to hand-edit. */
-  date: string;
-}
-
-/**
- * PLACEHOLDER ENTRIES — 4 plausible milestones invented to prove out the
- * page's layout, not real events. Swap the `title`/`description`/`date` in
- * each one for the real thing whenever it happens; the shape (a short title, a
- * one-line description, a loose date string) is meant to make that a quick
- * edit rather than a restructure.
- */
-export const ACHIEVEMENTS: readonly Achievement[] = [
-  {
-    title: "Alpha Vault Launched",
-    description:
-      "The vault opened its doors — the manifesto, the gating mechanism, and the first cohort of contributors.",
-    date: "Jul 2026",
-  },
-  {
-    title: "First Purge Day Completed",
-    description:
-      "Ran our first monthly access cycle end to end — invites sent, passive members cleared.",
-    date: "Jul 2026",
-  },
-  {
-    title: "Gated Discord Hub Opened",
-    description:
-      "The inner Discord went live for approved members — alpha, NFT discussion, and deep collaboration in one room.",
-    date: "Aug 2026",
-  },
-  {
-    title: "50 Members Onboarded",
-    description:
-      "Crossed our first real membership milestone through the application pipeline.",
-    date: "Aug 2026",
-  },
-] as const;

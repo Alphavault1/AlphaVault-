@@ -78,7 +78,7 @@ export function ForgotPasswordModal({ onSwitchToSignIn, onClose }: ForgotPasswor
           <Mail size={24} strokeWidth={1.75} />
         </span>
         <p className="mt-6 font-body text-[15px] leading-relaxed text-slate">
-          If that account exists, a password reset link is on its way. Check
+          We&rsquo;ve sent a password reset link to the email on file. Check
           your inbox — including spam — and follow the link to set a new
           password.
         </p>

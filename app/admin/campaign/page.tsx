@@ -32,7 +32,7 @@ export default async function AdminCampaignPage() {
       supabase.from("profiles").select("total_earnings"),
       supabase
         .from("campaigns")
-        .select("id, name, status, reward_amount, requirements, max_entries")
+        .select("id, name, status, reward_amount, requirements, max_entries, end_date")
         .order("created_at", { ascending: false }),
     ]);
 
@@ -137,6 +137,7 @@ export default async function AdminCampaignPage() {
                 requirementsCount={campaign.requirements.length}
                 maxEntries={campaign.max_entries}
                 occupiedEntries={capacityByCampaign.get(campaign.id) ?? 0}
+                endDate={campaign.end_date}
               />
             ))}
           </div>
