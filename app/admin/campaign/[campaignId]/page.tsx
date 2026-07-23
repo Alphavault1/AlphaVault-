@@ -27,11 +27,31 @@ export default async function AdminCampaignDetailPage({
   const { campaignId } = await params;
   const supabase = await getSupabaseServerClient();
 
-  const { data: campaign } = await supabase
-    .from("campaigns")
-    .select("id, name, status, reward_amount, requirements, max_entries, reference_url, end_date, campaign_type")
-    .eq("id", campaignId)
-    .maybeSingle();
+  // These three don't depend on each other, so they run concurrently rather
+  // than sequentially. Previously each awaited the last — meaning the page
+  // paid the full network latency of all three stacked end to end before it
+  // could render anything. On a campaign that was just created (the redirect
+  // target after creation), that stacking is the single biggest contributor
+  // to the "creating a campaign feels stuck" delay.
+  //
+  // The applications query stays separate below: it's conditional on
+  // campaign.campaign_type, which we can't know until the campaign query
+  // above actually resolves — a real dependency, not an avoidable one.
+  const [campaignResult, capacityResult, entriesResult] = await Promise.all([
+    supabase
+      .from("campaigns")
+      .select("id, name, status, reward_amount, requirements, max_entries, reference_url, end_date, campaign_type")
+      .eq("id", campaignId)
+      .maybeSingle(),
+    supabase.rpc("get_campaign_capacity", { p_campaign_id: campaignId }).maybeSingle(),
+    supabase
+      .from("campaign_entries")
+      .select("id, submission_url, wallet_address, status, review_note, submitted_at, profiles(x_handle)")
+      .eq("campaign_id", campaignId)
+      .order("submitted_at", { ascending: false }),
+  ]);
+
+  const campaign = campaignResult.data;
   if (!campaign) notFound();
 
   // get_campaign_capacity is a SECURITY DEFINER FUNCTION (was a view — see
@@ -39,20 +59,16 @@ export default async function AdminCampaignDetailPage({
   // Supabase database types (this project doesn't use codegen), .rpc()'s
   // inferred type is an empty object, which TypeScript correctly refuses to
   // let us read .occupied_entries etc. off of.
-  const { data: capacity } = (await supabase
-    .rpc("get_campaign_capacity", { p_campaign_id: campaignId })
-    .maybeSingle()) as {
-    data: { occupied_entries: number; accepted_entries: number; spots_left: number } | null;
-  };
+  const capacity = capacityResult.data as {
+    occupied_entries: number;
+    accepted_entries: number;
+    spots_left: number;
+  } | null;
+
+  const entriesRaw = entriesResult.data;
 
   const acceptedEntries = capacity?.accepted_entries ?? 0;
   const totalPaid = campaign.reward_amount * acceptedEntries;
-
-  const { data: entriesRaw } = await supabase
-    .from("campaign_entries")
-    .select("id, submission_url, wallet_address, status, review_note, submitted_at, profiles(x_handle)")
-    .eq("campaign_id", campaignId)
-    .order("submitted_at", { ascending: false });
 
   // Supabase's embedded-relation typing can surface this as either a single
   // object or an array depending on inferred cardinality — normalise

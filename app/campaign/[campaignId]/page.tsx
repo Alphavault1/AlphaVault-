@@ -41,40 +41,54 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("status")
-    .eq("id", user.id)
-    .maybeSingle();
+  // All five only need user.id (already available above), so none of them
+  // genuinely depend on each other — running them concurrently instead of
+  // stacking five sequential round trips is the difference between one
+  // network wait and five. Same fix as the admin detail page.
+  const [
+    profileResult,
+    campaignResult,
+    capacityResult,
+    existingEntryResult,
+    existingApplicationResult,
+  ] = await Promise.all([
+    supabase.from("profiles").select("status").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("campaigns")
+      .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url, end_date, campaign_type")
+      .eq("id", campaignId)
+      .maybeSingle(),
+    supabase.rpc("get_campaign_capacity", { p_campaign_id: campaignId }).maybeSingle(),
+    supabase
+      .from("campaign_entries")
+      .select("status, review_note")
+      .eq("campaign_id", campaignId)
+      .eq("profile_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("campaign_applications")
+      .select("status, review_note")
+      .eq("campaign_id", campaignId)
+      .eq("profile_id", user.id)
+      .maybeSingle(),
+  ]);
+
+  const profile = profileResult.data;
   if (!profile) redirect("/");
 
-  const { data: campaign } = await supabase
-    .from("campaigns")
-    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url, end_date, campaign_type")
-    .eq("id", campaignId)
-    .maybeSingle();
+  const campaign = campaignResult.data;
   if (!campaign) notFound();
 
   // get_campaign_capacity is a SECURITY DEFINER FUNCTION (was a view — see
   // the note in app/campaign/page.tsx). Explicitly typed for the same reason
   // as the admin detail page — no generated Supabase database types here.
-  const { data: capacity } = (await supabase
-    .rpc("get_campaign_capacity", { p_campaign_id: campaignId })
-    .maybeSingle()) as { data: { occupied_entries: number; spots_left: number } | null };
+  const capacity = capacityResult.data as {
+    occupied_entries: number;
+    spots_left: number;
+  } | null;
 
-  const { data: existingEntry } = await supabase
-    .from("campaign_entries")
-    .select("status, review_note")
-    .eq("campaign_id", campaignId)
-    .eq("profile_id", user.id)
-    .maybeSingle();
-
-  const { data: existingApplication } = await supabase
-    .from("campaign_applications")
-    .select("status, review_note")
-    .eq("campaign_id", campaignId)
-    .eq("profile_id", user.id)
-    .maybeSingle();
+  const existingEntry = existingEntryResult.data;
+  const existingApplication = existingApplicationResult.data;
 
   const requiresApplication = campaign.campaign_type === "application_required";
   const isApproved = !existingApplication || existingApplication.status === "approved";
