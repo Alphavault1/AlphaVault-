@@ -67,6 +67,39 @@ export const campaignFormSchema = z.object({
 
 export type CampaignFormInput = z.infer<typeof campaignFormSchema>;
 
+/**
+ * campaignSubmissionSchema
+ * ---------------------------
+ * The server action's real input shape — NOT the same as campaignFormSchema
+ * above, and that distinction is exactly what was broken before this schema
+ * existed. campaignFormSchema validates raw form input: a textarea string
+ * for requirements, a date-input string for endDate. It transforms those
+ * into an array and a Date respectively before handing them to the server
+ * action. But the server action was re-validating with that SAME schema —
+ * which still expects a raw string for requirements and endDate, not the
+ * array/Date it was actually receiving. Every campaign creation failed
+ * server-side as a result, silently, since the client-side parse always
+ * succeeded first.
+ *
+ * This schema validates the ACTUAL post-transform shape instead — same
+ * rules (length limits, valid values), just expressed against the types
+ * that are genuinely being submitted. Defense-in-depth is preserved (the
+ * server still independently validates, protecting against someone calling
+ * the action directly, bypassing the client entirely) — it just validates
+ * the right thing now.
+ */
+export const campaignSubmissionSchema = z.object({
+  name: z.string().trim().min(3).max(100),
+  requirements: z.array(z.string().min(2).max(300)).min(1).max(20),
+  maxEntries: z.coerce.number().int().min(1).max(100_000),
+  rewardAmount: z.coerce.number().nonnegative().max(1_000_000),
+  disclaimer: z.string().trim().min(10).max(1000),
+  status: z.enum(["draft", "live", "closed"]),
+  campaignType: z.enum(["direct_submission", "application_required"]),
+  referenceUrl: z.string().url().max(2048).optional(),
+  endDate: z.date().optional(),
+});
+
 export const entrySchema = z.object({
   campaignId: z.string().uuid(),
   submissionUrl: z

@@ -6,7 +6,7 @@ import {
   reviewSchema,
   banSchema,
   verificationSchema,
-  campaignFormSchema,
+  campaignSubmissionSchema,
   campaignReferenceSchema,
   deleteCampaignSchema,
   setMemberRoleSchema,
@@ -85,7 +85,7 @@ export async function setMemberVerification(input: unknown): Promise<ActionResul
 type CreateCampaignResult = { ok: true; campaignId: string } | { ok: false; error: string };
 
 export async function createCampaign(input: unknown): Promise<CreateCampaignResult> {
-  const parsed = campaignFormSchema.safeParse(input);
+  const parsed = campaignSubmissionSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
