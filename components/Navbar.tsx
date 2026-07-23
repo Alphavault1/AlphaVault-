@@ -32,7 +32,13 @@ import { useCampaignModals } from "@/components/campaign/CampaignModalsProvider"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import vaultMark from "@/public/vault-mark.png";
 
-export function Navbar() {
+export function Navbar({
+  initialIsSignedIn = false,
+  initialRole = null,
+}: {
+  initialIsSignedIn?: boolean;
+  initialRole?: "admin" | "creator" | null;
+} = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -52,8 +58,8 @@ export function Navbar() {
   // useful once signed in, routed correctly for an admin vs a regular
   // member, rather than continuing to point at the application form for
   // people who've already been through it.
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [role, setRole] = useState<"admin" | "creator" | null>(null);
+  const [isSignedIn, setIsSignedIn] = useState(initialIsSignedIn);
+  const [role, setRole] = useState<"admin" | "creator" | null>(initialRole);
   const dashboardHref = role === "admin" ? "/admin/campaign" : "/campaign";
 
   useEffect(() => {
