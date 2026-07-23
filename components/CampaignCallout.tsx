@@ -41,8 +41,7 @@ export function CampaignCallout() {
               Join the Campaign.
             </h2>
             <p className="mx-auto mt-4 max-w-md font-body text-base leading-relaxed text-slate">
-              No gate, no waiting for Purge Day — a lighter, open way to get
-              involved with Alpha Vault.
+              Created for alpha vault contributors.
             </p>
           </div>
 
