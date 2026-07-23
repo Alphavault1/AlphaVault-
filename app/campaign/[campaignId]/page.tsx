@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { EntryForm } from "@/components/campaign/EntryForm";
+import { ApplyButton } from "@/components/campaign/ApplyButton";
 
 export const metadata: Metadata = {
   title: "Campaign — Alpha Vault",
@@ -49,7 +50,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url, end_date")
+    .select("id, name, requirements, reward_amount, disclaimer, status, max_entries, reference_url, end_date, campaign_type")
     .eq("id", campaignId)
     .maybeSingle();
   if (!campaign) notFound();
@@ -67,6 +68,16 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
     .eq("campaign_id", campaignId)
     .eq("profile_id", user.id)
     .maybeSingle();
+
+  const { data: existingApplication } = await supabase
+    .from("campaign_applications")
+    .select("status, review_note")
+    .eq("campaign_id", campaignId)
+    .eq("profile_id", user.id)
+    .maybeSingle();
+
+  const requiresApplication = campaign.campaign_type === "application_required";
+  const isApproved = !existingApplication || existingApplication.status === "approved";
 
   const spotsLeft = capacity?.spots_left ?? 0;
   const hasEnded = campaign.end_date ? new Date(campaign.end_date) <= new Date() : false;
@@ -172,21 +183,62 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
               </div>
             )}
 
-            {profile.status === "approved" && !existingEntry && hasEnded && (
+            {profile.status === "approved" &&
+              !existingEntry &&
+              requiresApplication &&
+              !existingApplication && (
+                <>
+                  {hasEnded ? (
+                    <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
+                      This campaign has ended.
+                    </p>
+                  ) : (
+                    <ApplyButton campaignId={campaign.id} />
+                  )}
+                </>
+              )}
+
+            {profile.status === "approved" &&
+              !existingEntry &&
+              requiresApplication &&
+              existingApplication &&
+              existingApplication.status !== "approved" && (
+                <div className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center">
+                  <p className="font-body text-sm uppercase tracking-wide text-slate">
+                    Your application
+                  </p>
+                  <div className="mt-3 flex justify-center">
+                    <StatusBadge status={existingApplication.status} />
+                  </div>
+                  {existingApplication.status === "rejected" && existingApplication.review_note && (
+                    <p className="mt-4 font-body text-sm text-slate">
+                      {existingApplication.review_note}
+                    </p>
+                  )}
+                </div>
+              )}
+
+            {profile.status === "approved" && !existingEntry && isApproved && hasEnded && (
               <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
                 This campaign has ended.
               </p>
             )}
 
-            {profile.status === "approved" && !existingEntry && !hasEnded && spotsLeft <= 0 && (
-              <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
-                This campaign is full.
-              </p>
-            )}
+            {profile.status === "approved" &&
+              !existingEntry &&
+              isApproved &&
+              !hasEnded &&
+              spotsLeft <= 0 && (
+                <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
+                  This campaign is full.
+                </p>
+              )}
 
-            {profile.status === "approved" && !existingEntry && !hasEnded && spotsLeft > 0 && (
-              <EntryForm campaignId={campaign.id} />
-            )}
+            {profile.status === "approved" &&
+              !existingEntry &&
+              isApproved &&
+              !hasEnded &&
+              spotsLeft > 0 && <EntryForm campaignId={campaign.id} />}
           </div>
         </div>
       </div>

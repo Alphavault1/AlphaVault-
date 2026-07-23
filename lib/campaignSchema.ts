@@ -37,6 +37,7 @@ export const campaignFormSchema = z.object({
     .min(10, "At least 10 characters.")
     .max(1000, "Keep it under 1000 characters."),
   status: z.enum(["draft", "live", "closed"]),
+  campaignType: z.enum(["direct_submission", "application_required"]).default("direct_submission"),
   // Optional — an example post or task-instructions link shown to members.
   // Empty string normalizes to undefined so an unfilled field doesn't fail
   // the URL check.
@@ -132,4 +133,14 @@ export const deleteCampaignSchema = z.object({
 export const setMemberRoleSchema = z.object({
   profileId: z.string().uuid(),
   role: z.enum(["creator", "admin"]),
+});
+
+export const applicationSchema = z.object({
+  campaignId: z.string().uuid(),
+});
+
+export const reviewApplicationSchema = z.object({
+  applicationId: z.string().uuid(),
+  status: z.enum(["approved", "rejected"]),
+  reviewNote: z.string().trim().max(500, "Keep it under 500 characters.").optional(),
 });

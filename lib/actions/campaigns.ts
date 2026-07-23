@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { entrySchema } from "@/lib/campaignSchema";
+import { entrySchema, applicationSchema } from "@/lib/campaignSchema";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type ActionResult = { ok: true } | { ok: false; error: string };
@@ -45,5 +45,36 @@ export async function submitCampaignEntry(input: unknown): Promise<ActionResult>
 
   revalidatePath(`/campaign/${parsed.data.campaignId}`);
   revalidatePath("/campaign");
+  return { ok: true };
+}
+
+/**
+ * submitCampaignApplication
+ * ----------------------------
+ * The pre-approval step for "Application Required" campaigns — same thin
+ * wrapper pattern as submitCampaignEntry above. All the real rules (must be
+ * verified, campaign must actually require an application, can't apply
+ * twice) live in submit_campaign_application() in
+ * supabase/campaign_schema_07_application_required.sql.
+ */
+export async function submitCampaignApplication(input: unknown): Promise<ActionResult> {
+  const parsed = applicationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+
+  const { error } = await supabase.rpc("submit_campaign_application", {
+    p_campaign_id: parsed.data.campaignId,
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/campaign/${parsed.data.campaignId}`);
   return { ok: true };
 }

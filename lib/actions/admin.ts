@@ -10,6 +10,7 @@ import {
   campaignReferenceSchema,
   deleteCampaignSchema,
   setMemberRoleSchema,
+  reviewApplicationSchema,
 } from "@/lib/campaignSchema";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -109,6 +110,7 @@ export async function createCampaign(input: unknown): Promise<CreateCampaignResu
       created_by: user.id,
       reference_url: parsed.data.referenceUrl ?? null,
       end_date: parsed.data.endDate?.toISOString() ?? null,
+      campaign_type: parsed.data.campaignType,
     })
     .select("id")
     .single();
@@ -277,4 +279,56 @@ export async function setMemberRole(input: unknown): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/campaign/members");
   return { ok: true };
+}
+
+/**
+ * reviewCampaignApplication
+ * ----------------------------
+ * Approve/reject a pending application — the pre-approval gate for
+ * "Application Required" campaigns. Same thin-wrapper reasoning as every
+ * other review action here: the real rules (idempotent, admin-only) live in
+ * review_campaign_application() in
+ * supabase/campaign_schema_07_application_required.sql.
+ */
+export async function reviewCampaignApplication(input: unknown): Promise<ActionResult> {
+  const parsed = reviewApplicationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.rpc("review_campaign_application", {
+    p_application_id: parsed.data.applicationId,
+    p_status: parsed.data.status,
+    p_review_note: parsed.data.reviewNote ?? null,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/campaign");
+  return { ok: true };
+}
+
+interface ApplicationExportRow {
+  x_handle: string;
+  status: string;
+  applied_at: string;
+}
+
+type ApplicationExportResult =
+  | { ok: true; rows: ApplicationExportRow[] }
+  | { ok: false; error: string };
+
+export async function getCampaignApplicationsExport(
+  campaignId: string,
+): Promise<ApplicationExportResult> {
+  const parsedId = z.string().uuid().safeParse(campaignId);
+  if (!parsedId.success) return { ok: false, error: "Invalid campaign." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("export_campaign_applications", {
+    p_campaign_id: parsedId.data,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, rows: (data ?? []) as ApplicationExportRow[] };
 }

@@ -10,6 +10,7 @@ import { ExportMenu } from "@/components/admin/ExportMenu";
 import { CampaignReferenceForm } from "@/components/admin/CampaignReferenceForm";
 import { DeleteCampaignButton } from "@/components/admin/DeleteCampaignButton";
 import { EntryReviewTable, type ReviewEntryRow } from "@/components/admin/EntryReviewTable";
+import { ApplicationReviewTable, type ReviewApplicationRow } from "@/components/admin/ApplicationReviewTable";
 
 export const metadata: Metadata = {
   title: "Manage Campaign — Admin — Alpha Vault",
@@ -28,7 +29,7 @@ export default async function AdminCampaignDetailPage({
 
   const { data: campaign } = await supabase
     .from("campaigns")
-    .select("id, name, status, reward_amount, requirements, max_entries, reference_url, end_date")
+    .select("id, name, status, reward_amount, requirements, max_entries, reference_url, end_date, campaign_type")
     .eq("id", campaignId)
     .maybeSingle();
   if (!campaign) notFound();
@@ -66,6 +67,27 @@ export default async function AdminCampaignDetailPage({
       status: e.status,
       reviewNote: e.review_note,
       submittedAt: e.submitted_at,
+    };
+  });
+
+  const requiresApplication = campaign.campaign_type === "application_required";
+
+  const { data: applicationsRaw } = requiresApplication
+    ? await supabase
+        .from("campaign_applications")
+        .select("id, status, review_note, applied_at, profiles(x_handle)")
+        .eq("campaign_id", campaignId)
+        .order("applied_at", { ascending: false })
+    : { data: null };
+
+  const applications: ReviewApplicationRow[] = (applicationsRaw ?? []).map((a) => {
+    const profile = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles;
+    return {
+      id: a.id,
+      xHandle: profile?.x_handle ?? "unknown",
+      status: a.status,
+      reviewNote: a.review_note,
+      appliedAt: a.applied_at,
     };
   });
 
@@ -127,6 +149,17 @@ export default async function AdminCampaignDetailPage({
         <div className="mt-10 max-w-xl">
           <CampaignReferenceForm campaignId={campaign.id} currentUrl={campaign.reference_url} />
         </div>
+
+        {requiresApplication && (
+          <>
+            <h2 className="mt-14 text-2xl uppercase leading-tight sm:text-3xl">
+              Applications.
+            </h2>
+            <div className="mt-6">
+              <ApplicationReviewTable applications={applications} />
+            </div>
+          </>
+        )}
 
         <h2 className="mt-14 text-2xl uppercase leading-tight sm:text-3xl">Entries.</h2>
         <div className="mt-6">

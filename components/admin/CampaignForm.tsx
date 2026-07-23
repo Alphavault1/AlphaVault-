@@ -20,6 +20,9 @@ export function CampaignForm() {
   const [rewardAmount, setRewardAmount] = useState("");
   const [disclaimer, setDisclaimer] = useState(DEFAULT_DISCLAIMER);
   const [status, setStatus] = useState<"draft" | "live" | "closed">("draft");
+  const [campaignType, setCampaignType] = useState<"direct_submission" | "application_required">(
+    "direct_submission",
+  );
   const [referenceUrl, setReferenceUrl] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -38,6 +41,7 @@ export function CampaignForm() {
       rewardAmount,
       disclaimer,
       status,
+      campaignType,
       referenceUrl,
       endDate,
     });
@@ -179,6 +183,25 @@ export function CampaignForm() {
           <option value="draft">Draft — not visible to members yet</option>
           <option value="live">Live — open for entries now</option>
           <option value="closed">Closed</option>
+        </select>
+      </div>
+
+      <div>
+        <label htmlFor="cf-campaign-type" className="mb-2 block font-body text-sm text-slate">
+          Campaign type
+        </label>
+        <select
+          id="cf-campaign-type"
+          value={campaignType}
+          onChange={(e) =>
+            setCampaignType(e.target.value as "direct_submission" | "application_required")
+          }
+          className={inputBase}
+        >
+          <option value="direct_submission">Direct submission — members can enter right away</option>
+          <option value="application_required">
+            Application required — members must apply and be approved first
+          </option>
         </select>
       </div>
 
