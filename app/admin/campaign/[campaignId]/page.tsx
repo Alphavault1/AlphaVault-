@@ -46,7 +46,7 @@ export default async function AdminCampaignDetailPage({
     supabase.rpc("get_campaign_capacity", { p_campaign_id: campaignId }).maybeSingle(),
     supabase
       .from("campaign_entries")
-      .select("id, submission_url, wallet_address, status, review_note, submitted_at, profiles(x_handle)")
+      .select("id, submission_url, wallet_address, payment_method, status, review_note, submitted_at, profiles(x_handle)")
       .eq("campaign_id", campaignId)
       .order("submitted_at", { ascending: false }),
   ]);
@@ -80,6 +80,7 @@ export default async function AdminCampaignDetailPage({
       xHandle: profile?.x_handle ?? "unknown",
       submissionUrl: e.submission_url,
       walletAddress: e.wallet_address,
+      paymentMethod: e.payment_method,
       status: e.status,
       reviewNote: e.review_note,
       submittedAt: e.submitted_at,

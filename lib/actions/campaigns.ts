@@ -32,6 +32,7 @@ export async function submitCampaignEntry(input: unknown): Promise<ActionResult>
     p_campaign_id: parsed.data.campaignId,
     p_submission_url: parsed.data.submissionUrl,
     p_wallet_address: parsed.data.walletAddress,
+    p_payment_method: parsed.data.paymentMethod,
   });
 
   if (error) {

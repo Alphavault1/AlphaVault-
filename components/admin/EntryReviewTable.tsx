@@ -18,12 +18,14 @@ import { useRouter } from "next/navigation";
 import { ExternalLink, Loader2, Search } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { reviewCampaignEntry } from "@/lib/actions/admin";
+import { paymentMethodLabel } from "@/lib/paymentMethods";
 
 export interface ReviewEntryRow {
   id: string;
   xHandle: string;
   submissionUrl: string;
   walletAddress: string;
+  paymentMethod: string;
   status: string;
   reviewNote: string | null;
   submittedAt: string;
@@ -44,7 +46,8 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
         (e) =>
           e.xHandle.toLowerCase().includes(normalizedSearch) ||
           e.submissionUrl.toLowerCase().includes(normalizedSearch) ||
-          e.walletAddress.toLowerCase().includes(normalizedSearch),
+          e.walletAddress.toLowerCase().includes(normalizedSearch) ||
+          paymentMethodLabel(e.paymentMethod).toLowerCase().includes(normalizedSearch),
       )
     : entries;
 
@@ -123,6 +126,10 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
             </a>
             <p className="mt-1 truncate font-body text-xs text-muted">
               Wallet: {entry.walletAddress}
+            </p>
+            <p className="mt-1 font-body text-xs text-muted">
+              Pay via:{" "}
+              <span className="text-slate">{paymentMethodLabel(entry.paymentMethod)}</span>
             </p>
           </div>
 

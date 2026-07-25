@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PAYMENT_METHOD_VALUES } from "@/lib/paymentMethods";
 
 /**
  * Campaign & admin validation.
@@ -115,6 +116,12 @@ export const entrySchema = z.object({
     .trim()
     .min(8, "Enter a valid wallet address.")
     .max(255, "That wallet address is unusually long."),
+  // Which chain the reward is paid on. An unselected control submits "",
+  // which fails the enum with our own message rather than zod's default
+  // "Invalid enum value" wording.
+  paymentMethod: z.enum(PAYMENT_METHOD_VALUES, {
+    errorMap: () => ({ message: "Select a payment method." }),
+  }),
 });
 
 export type EntryInput = z.infer<typeof entrySchema>;

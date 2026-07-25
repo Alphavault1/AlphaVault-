@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { entrySchema } from "@/lib/campaignSchema";
 import { submitCampaignEntry } from "@/lib/actions/campaigns";
+import { PAYMENT_METHODS, type PaymentMethodValue } from "@/lib/paymentMethods";
 
 const inputBase =
   "w-full rounded-xl border bg-black px-4 py-3 font-body text-[15px] text-white placeholder:text-muted transition-colors focus:outline-none border-white/10 focus:border-gold";
@@ -28,6 +29,10 @@ export function EntryForm({ campaignId }: EntryFormProps) {
   const router = useRouter();
   const [submissionUrl, setSubmissionUrl] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
+  // "" is the no-selection state — deliberately not defaulting to a chain,
+  // since a wrong-but-plausible default is worse than forcing a choice when
+  // the value drives a real payout.
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue | "">("");
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "submitting">("idle");
@@ -36,7 +41,12 @@ export function EntryForm({ campaignId }: EntryFormProps) {
     e.preventDefault();
     setSubmitError(null);
 
-    const parsed = entrySchema.safeParse({ campaignId, submissionUrl, walletAddress });
+    const parsed = entrySchema.safeParse({
+      campaignId,
+      submissionUrl,
+      walletAddress,
+      paymentMethod,
+    });
     if (!parsed.success) {
       const next: Partial<Record<string, string>> = {};
       for (const issue of parsed.error.issues) {
@@ -105,6 +115,43 @@ export function EntryForm({ campaignId }: EntryFormProps) {
           what you enter, and can&rsquo;t be corrected once an entry is accepted.
         </p>
       </div>
+
+      <fieldset>
+        <legend className="mb-2 block font-body text-sm text-slate">
+          Payment method <span className="text-gold">*</span>
+        </legend>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Payment method">
+          {PAYMENT_METHODS.map((method) => {
+            const selected = paymentMethod === method.value;
+            return (
+              <label
+                key={method.value}
+                className={`flex cursor-pointer items-center justify-center rounded-xl border px-4 py-3 font-body text-[15px] transition-colors ${
+                  selected
+                    ? "border-gold bg-gold/10 text-white"
+                    : "border-white/10 bg-black text-slate hover:border-white/25"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="payment-method"
+                  value={method.value}
+                  checked={selected}
+                  onChange={() => setPaymentMethod(method.value)}
+                  className="sr-only"
+                />
+                {method.label}
+              </label>
+            );
+          })}
+        </div>
+        {errors.paymentMethod && (
+          <p className="mt-1.5 font-body text-xs text-red-400">{errors.paymentMethod}</p>
+        )}
+        <p className="mt-1.5 font-body text-xs text-muted">
+          The chain your reward is paid on — make sure your wallet above supports it.
+        </p>
+      </fieldset>
 
       {submitError && (
         <p role="alert" className="font-body text-sm text-red-400">

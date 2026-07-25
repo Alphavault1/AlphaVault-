@@ -146,6 +146,7 @@ export async function updateCampaignStatus(input: unknown): Promise<ActionResult
 interface WalletExportRow {
   x_handle: string;
   wallet_address: string;
+  payment_method: string;
   submission_url: string;
   reviewed_at: string;
 }

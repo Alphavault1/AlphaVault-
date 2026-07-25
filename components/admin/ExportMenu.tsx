@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { getCampaignWalletExport, getCampaignSubmissionsExport } from "@/lib/actions/admin";
+import { paymentMethodLabel } from "@/lib/paymentMethods";
 
 function downloadFile(filename: string, content: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
@@ -47,8 +48,18 @@ export function ExportMenu({ campaignId }: { campaignId: string }) {
     if (result.rows.length === 0) return setError("No accepted entries to export yet.");
 
     const csv = [
-      toCsvRow(["x_handle", "wallet_address", "submission_url", "reviewed_at"]),
-      ...result.rows.map((r) => toCsvRow([r.x_handle, r.wallet_address, r.submission_url, r.reviewed_at])),
+      toCsvRow(["x_handle", "wallet_address", "payment_method", "submission_url", "reviewed_at"]),
+      ...result.rows.map((r) =>
+        toCsvRow([
+          r.x_handle,
+          r.wallet_address,
+          // Human label ("USDT (BEP20)"), not the raw slug — the person
+          // running the payout reads this sheet directly.
+          paymentMethodLabel(r.payment_method),
+          r.submission_url,
+          r.reviewed_at,
+        ]),
+      ),
     ].join("\n");
     downloadFile(`campaign-${campaignId}-wallets.csv`, csv, "text/csv;charset=utf-8;");
   }

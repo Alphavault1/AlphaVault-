@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { paymentMethodLabel } from "@/lib/paymentMethods";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { EntryForm } from "@/components/campaign/EntryForm";
@@ -61,7 +62,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
     supabase.rpc("get_campaign_capacity", { p_campaign_id: campaignId }).maybeSingle(),
     supabase
       .from("campaign_entries")
-      .select("status, review_note")
+      .select("status, review_note, submission_url, wallet_address, payment_method")
       .eq("campaign_id", campaignId)
       .eq("profile_id", user.id)
       .maybeSingle(),
@@ -182,18 +183,56 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             )}
 
             {profile.status === "approved" && existingEntry && (
-              <div className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center">
-                <p className="font-body text-sm uppercase tracking-wide text-slate">
+              <div className="rounded-2xl border border-white/5 bg-surface-900 p-6">
+                <p className="text-center font-body text-sm uppercase tracking-wide text-slate">
                   Your entry
                 </p>
                 <div className="mt-3 flex justify-center">
                   <StatusBadge status={existingEntry.status} />
                 </div>
                 {existingEntry.status === "rejected" && existingEntry.review_note && (
-                  <p className="mt-4 font-body text-sm text-slate">
+                  <p className="mt-4 text-center font-body text-sm text-slate">
                     {existingEntry.review_note}
                   </p>
                 )}
+
+                {/* What you submitted — read straight back so a member can
+                    confirm the wallet and chain their reward will be paid to.
+                    The full wallet is shown deliberately (wrapped, not
+                    truncated): verifying it's exactly right is the whole point
+                    of showing it. */}
+                <div className="mt-5 border-t border-white/5 pt-5 text-left">
+                  <p className="font-body text-xs uppercase tracking-wide text-slate">
+                    What you submitted
+                  </p>
+                  <dl className="mt-3 space-y-3">
+                    <div>
+                      <dt className="font-body text-xs text-muted">Post</dt>
+                      <dd className="mt-0.5">
+                        <a
+                          href={existingEntry.submission_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-body text-sm text-bronze transition-colors hover:text-gold"
+                        >
+                          View post <ExternalLink size={12} />
+                        </a>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-body text-xs text-muted">Wallet</dt>
+                      <dd className="mt-0.5 break-all font-body text-sm text-white">
+                        {existingEntry.wallet_address}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-body text-xs text-muted">Payment method</dt>
+                      <dd className="mt-0.5 font-body text-sm text-white">
+                        {paymentMethodLabel(existingEntry.payment_method)}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
               </div>
             )}
 
