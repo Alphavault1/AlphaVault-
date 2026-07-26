@@ -16,7 +16,34 @@ import { NextResponse, type NextRequest } from "next/server";
  * go stale: it would work for a while, then start failing server-side reads
  * with no obvious cause. Running the refresh here, on every request before
  * any page renders, is the standard fix.
+ *
+ * BOUNDED TIMEOUT — why this was added:
+ * This runs on EVERY navigation, site-wide, before anything renders. Without
+ * a timeout, a slow moment on Supabase's end (network hiccup, cold region,
+ * anything short of a hard failure) makes every single click feel sluggish —
+ * "Back to home," "Sign out," any page load — because the whole response is
+ * blocked waiting on this one call. AUTH_REFRESH_TIMEOUT_MS bounds the worst
+ * case: if the revalidation call doesn't come back in time, the request is
+ * aborted (via AbortController, so the in-flight fetch is actually cancelled,
+ * not just abandoned) and the page proceeds without a refreshed session for
+ * this one request. That's a strictly smaller problem than blocking the
+ * entire site on a slow auth call — the existing cookie is still valid for a
+ * while yet, and the next request tries the refresh again. Fails open, same
+ * philosophy as the missing-env-vars case below.
  */
+const AUTH_REFRESH_TIMEOUT_MS = 3000;
+
+/** Wraps fetch so any request through this client is aborted after `timeoutMs`. */
+function fetchWithTimeout(timeoutMs: number): typeof fetch {
+  return (input, init) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(input, { ...init, signal: controller.signal }).finally(() =>
+      clearTimeout(timer),
+    );
+  };
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -29,6 +56,7 @@ export async function middleware(request: NextRequest) {
   if (!url || !anonKey) return response;
 
   const supabase = createServerClient(url, anonKey, {
+    global: { fetch: fetchWithTimeout(AUTH_REFRESH_TIMEOUT_MS) },
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -49,7 +77,16 @@ export async function middleware(request: NextRequest) {
   // reads the cookie as-is, while getUser() actually revalidates the token
   // with Supabase, which is what triggers the refresh this middleware exists
   // to perform.
-  await supabase.auth.getUser();
+  //
+  // Wrapped in try/catch: if the timeout above fires, this rejects with an
+  // AbortError. That's expected and handled the same way as the missing-env
+  // case — skip the refresh for this one request rather than fail the page.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Fail open. The existing session cookie is still usable; the refresh
+    // will simply be retried on the next request.
+  }
 
   return response;
 }

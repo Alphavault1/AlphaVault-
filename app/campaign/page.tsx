@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { Clock, CheckCircle2, XCircle } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { CampaignCard } from "@/components/campaign/CampaignCard";
-import { SignOutButton } from "@/components/campaign/SignOutButton";
+import { PortalFooterActions } from "@/components/campaign/PortalFooterActions";
 
 export const metadata: Metadata = {
   title: "Campaign — Alpha Vault",
@@ -187,14 +186,7 @@ export default async function CampaignPage() {
             </>
           )}
 
-          {profile.status !== "approved" && (
-            <div className="mt-10 flex items-center justify-center gap-6">
-              <Link href="/" className="font-body text-sm text-slate transition-colors hover:text-white">
-                Back to home
-              </Link>
-              <SignOutButton />
-            </div>
-          )}
+          {profile.status !== "approved" && <PortalFooterActions />}
         </div>
 
         {profile.status === "approved" && (
@@ -228,12 +220,7 @@ export default async function CampaignPage() {
               </div>
             )}
 
-            <div className="mt-10 flex items-center justify-center gap-6">
-              <Link href="/" className="font-body text-sm text-slate transition-colors hover:text-white">
-                Back to home
-              </Link>
-              <SignOutButton />
-            </div>
+            <PortalFooterActions />
           </div>
         )}
       </div>
