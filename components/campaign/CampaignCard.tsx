@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
+import { rewardPoolLabel } from "@/lib/campaignRewards";
 
 interface CampaignCardProps {
   href: string;
@@ -11,6 +12,22 @@ interface CampaignCardProps {
   maxEntries: number;
   occupiedEntries: number;
   endDate?: string | null;
+  /**
+   * Who's looking at this card. This component renders on BOTH the member
+   * campaign list and the admin dashboard, and they need different things:
+   *
+   *   "member" (default) — shows the reward pool. No spot count, no fill bar:
+   *     both told a browsing member how contested the campaign already was,
+   *     which made people assume it was taken and not apply. See
+   *     lib/campaignRewards.ts for the full reasoning.
+   *
+   *   "admin" — shows spots left and the fill bar, because an admin managing
+   *     capacity genuinely needs to see how full a campaign is at a glance.
+   *
+   * Defaults to "member" deliberately: if a new call site forgets to pass
+   * this, it fails toward showing LESS internal detail, not more.
+   */
+  audience?: "member" | "admin";
 }
 
 function formatEndDate(endDate: string): string {
@@ -30,7 +47,9 @@ export function CampaignCard({
   maxEntries,
   occupiedEntries,
   endDate,
+  audience = "member",
 }: CampaignCardProps) {
+  const isAdmin = audience === "admin";
   const spotsLeft = Math.max(0, maxEntries - occupiedEntries);
   const percentFull = Math.min(100, (occupiedEntries / maxEntries) * 100);
 
@@ -45,21 +64,43 @@ export function CampaignCard({
       </div>
 
       <p className="mt-2 font-body text-sm text-slate">
-        {requirementsCount} requirement{requirementsCount === 1 ? "" : "s"} ·{" "}
-        {spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left
+        {requirementsCount} requirement{requirementsCount === 1 ? "" : "s"}
+        {isAdmin && (
+          <>
+            {" "}
+            · {spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left
+          </>
+        )}
         {endDate && <> · {formatEndDate(endDate)}</>}
       </p>
 
-      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
-        <div
-          className="h-full rounded-full bg-gold transition-all"
-          style={{ width: `${percentFull}%` }}
-        />
-      </div>
+      {/* Capacity bar — admin only. A filling bar is the same "already
+          claimed" signal as the spot count, just visual, so it comes out of
+          the member view alongside it. */}
+      {isAdmin && (
+        <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
+          <div
+            className="h-full rounded-full bg-gold transition-all"
+            style={{ width: `${percentFull}%` }}
+          />
+        </div>
+      )}
+
+      {!isAdmin && (
+        <p className="mt-4 font-body text-sm text-bronze">
+          {rewardPoolLabel(rewardAmount, maxEntries)}
+        </p>
+      )}
 
       <div className="mt-4 flex items-center justify-between">
+        {/* The per-entry figure stays the headline number: it's what a member
+            actually earns. The pool above it conveys scale — showing only a
+            pool would invite someone to think the whole amount was theirs. */}
         <span className="font-display text-2xl text-gold">
           ${rewardAmount.toLocaleString()}
+          {!isAdmin && (
+            <span className="ml-1.5 font-body text-xs text-slate">per entry</span>
+          )}
         </span>
         <span className="flex items-center gap-1 font-body text-sm text-slate transition-colors group-hover:text-white">
           View

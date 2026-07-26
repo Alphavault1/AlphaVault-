@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { paymentMethodLabel } from "@/lib/paymentMethods";
+import { rewardPoolLabel } from "@/lib/campaignRewards";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { EntryForm } from "@/components/campaign/EntryForm";
@@ -127,6 +128,9 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             ${campaign.reward_amount.toLocaleString()}{" "}
             <span className="font-body text-base text-slate">per accepted entry</span>
           </p>
+          <p className="mt-1 font-body text-sm text-bronze">
+            {rewardPoolLabel(campaign.reward_amount, campaign.max_entries)}
+          </p>
 
           <div className="mt-8 rounded-2xl border border-white/5 bg-surface-900 p-6">
             <p className="font-body text-xs uppercase tracking-wide text-slate">
@@ -157,22 +161,23 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             {campaign.disclaimer}
           </p>
 
-          <p className="mt-6 font-body text-sm text-slate">
-            {spotsLeft} spot{spotsLeft === 1 ? "" : "s"} left
-            {campaign.end_date && (
-              <>
-                {" "}
-                ·{" "}
-                {hasEnded
-                  ? "Ended"
-                  : `Ends ${new Date(campaign.end_date).toLocaleDateString("en-US", {
-                      month: "long",
-                      day: "numeric",
-                      year: "numeric",
-                    })}`}
-              </>
-            )}
-          </p>
+          {/* The spot count that used to lead this line is gone on purpose —
+              a visible "N spots left" made members assume the campaign was
+              already taken and skip applying. The DEADLINE stays: a closing
+              date encourages acting sooner, it doesn't suggest someone else
+              already won. spotsLeft is still computed above and still gates
+              the form below; it's just no longer shown. */}
+          {campaign.end_date && (
+            <p className="mt-6 font-body text-sm text-slate">
+              {hasEnded
+                ? "Ended"
+                : `Ends ${new Date(campaign.end_date).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}`}
+            </p>
+          )}
 
           <div className="mt-8">
             {profile.status !== "approved" && (

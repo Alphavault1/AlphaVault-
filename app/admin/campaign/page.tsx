@@ -138,6 +138,7 @@ export default async function AdminCampaignPage() {
                 maxEntries={campaign.max_entries}
                 occupiedEntries={capacityByCampaign.get(campaign.id) ?? 0}
                 endDate={campaign.end_date}
+                audience="admin"
               />
             ))}
           </div>
