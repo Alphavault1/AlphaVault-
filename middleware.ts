@@ -92,11 +92,37 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Run on every route except static assets and image optimization files —
-     * there's no session to refresh for a .png or a JS chunk.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|gif)$).*)",
-  ],
+  /*
+   * NARROWED SCOPE — why this isn't "run on everything except static files"
+   * anymore:
+   *
+   * This used to run on every route site-wide. That meant every page paid
+   * the auth-refresh round trip, including pages that never read a session
+   * at all — confirmed in production via a Netlify Observability log showing
+   * a 499 (client disconnected) on /apply, where 1056ms of a 1057ms request
+   * was spent entirely inside this middleware... for a page with zero
+   * getSupabaseServerClient() or auth calls anywhere in it. That request was
+   * paying full price for a lookup whose result it would never use.
+   *
+   * This list is the complete, GREPPED (not guessed) set of routes that
+   * actually call getSupabaseServerClient() / auth.getUser() somewhere in
+   * their render path:
+   *   /                      — app/page.tsx (nav shows sign-in vs dashboard)
+   *   /campaign/*            — app/campaign/page.tsx + [campaignId]/page.tsx
+   *   /admin/campaign/*      — app/admin/campaign/layout.tsx (covers every
+   *                            admin route beneath it: dashboard, new,
+   *                            members, and each campaign's detail page)
+   *   /reset-password        — app/reset-password/page.tsx
+   *
+   * Confirmed NOT to need it, so deliberately excluded: /apply (no auth
+   * import at all), /api/apply and /api/campaign/lookup-email (both use
+   * getSupabaseAdmin — a separate service-role client with no cookie/session
+   * involvement — specifically because they serve visitors who aren't signed
+   * in yet), plus every static asset as before.
+   *
+   * `/:path*` is Next's optional catch-all — `/campaign/:path*` alone
+   * matches `/campaign` itself AND everything beneath it, so there's no need
+   * for a separate bare entry per section.
+   */
+  matcher: ["/", "/campaign/:path*", "/admin/campaign/:path*", "/reset-password"],
 };
