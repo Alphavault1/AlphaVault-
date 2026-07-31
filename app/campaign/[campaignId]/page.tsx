@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { paymentMethodLabel } from "@/lib/paymentMethods";
-import { rewardPoolLabel } from "@/lib/campaignRewards";
+import { rewardPoolFigure } from "@/lib/campaignRewards";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { EntryForm } from "@/components/campaign/EntryForm";
@@ -124,12 +124,11 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             <StatusBadge status={campaign.status} />
           </div>
 
-          <p className="mt-4 font-display text-3xl text-gold">
-            ${campaign.reward_amount.toLocaleString()}{" "}
-            <span className="font-body text-base text-slate">per accepted entry</span>
+          <p className="mt-4 font-body text-xs uppercase tracking-wide text-slate">
+            Budget
           </p>
-          <p className="mt-1 font-body text-sm text-bronze">
-            {rewardPoolLabel(campaign.reward_amount, campaign.max_entries)}
+          <p className="mt-1 font-display text-3xl text-gold">
+            {rewardPoolFigure(campaign.reward_amount, campaign.max_entries)}
           </p>
 
           <div className="mt-8 rounded-2xl border border-white/5 bg-surface-900 p-6">

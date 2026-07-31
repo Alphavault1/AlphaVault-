@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
-import { rewardPoolLabel } from "@/lib/campaignRewards";
+import { rewardPoolFigure } from "@/lib/campaignRewards";
 
 interface CampaignCardProps {
   href: string;
@@ -16,13 +16,14 @@ interface CampaignCardProps {
    * Who's looking at this card. This component renders on BOTH the member
    * campaign list and the admin dashboard, and they need different things:
    *
-   *   "member" (default) — shows the reward pool. No spot count, no fill bar:
-   *     both told a browsing member how contested the campaign already was,
-   *     which made people assume it was taken and not apply. See
-   *     lib/campaignRewards.ts for the full reasoning.
+   *   "member" (default) — shows ONLY the total budget ("Budget · $X"). No
+   *     spot count, no fill bar, no per-entry figure. Confirmed directly by
+   *     the client against a reference design: match that card exactly — one
+   *     number, the total. See lib/campaignRewards.ts for the full history.
    *
-   *   "admin" — shows spots left and the fill bar, because an admin managing
-   *     capacity genuinely needs to see how full a campaign is at a glance.
+   *   "admin" — shows spots left, the fill bar, and the raw per-entry
+   *     reward, because an admin managing capacity and payouts genuinely
+   *     needs those numbers, not the member-facing summary.
    *
    * Defaults to "member" deliberately: if a new call site forgets to pass
    * this, it fails toward showing LESS internal detail, not more.
@@ -75,7 +76,7 @@ export function CampaignCard({
       </p>
 
       {/* Capacity bar — admin only. A filling bar is the same "already
-          claimed" signal as the spot count, just visual, so it comes out of
+          claimed" signal as the spot count, just visual, so it stays out of
           the member view alongside it. */}
       {isAdmin && (
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/5">
@@ -86,22 +87,22 @@ export function CampaignCard({
         </div>
       )}
 
-      {!isAdmin && (
-        <p className="mt-4 font-body text-sm text-bronze">
-          {rewardPoolLabel(rewardAmount, maxEntries)}
-        </p>
-      )}
-
-      <div className="mt-4 flex items-center justify-between">
-        {/* The per-entry figure stays the headline number: it's what a member
-            actually earns. The pool above it conveys scale — showing only a
-            pool would invite someone to think the whole amount was theirs. */}
-        <span className="font-display text-2xl text-gold">
-          ${rewardAmount.toLocaleString()}
-          {!isAdmin && (
-            <span className="ml-1.5 font-body text-xs text-slate">per entry</span>
-          )}
-        </span>
+      <div className="mt-4 flex items-end justify-between">
+        {isAdmin ? (
+          // Admin needs the per-entry payout figure, not the budget summary.
+          <span className="font-display text-2xl text-gold">
+            ${rewardAmount.toLocaleString()}
+          </span>
+        ) : (
+          <div>
+            <p className="font-body text-xs uppercase tracking-wide text-slate">
+              Budget
+            </p>
+            <p className="mt-0.5 font-display text-2xl text-gold">
+              {rewardPoolFigure(rewardAmount, maxEntries)}
+            </p>
+          </div>
+        )}
         <span className="flex items-center gap-1 font-body text-sm text-slate transition-colors group-hover:text-white">
           View
           <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
