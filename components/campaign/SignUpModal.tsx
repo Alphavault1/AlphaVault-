@@ -26,6 +26,7 @@ import {
   CAMPAIGN_LIMITS,
 } from "@/lib/campaignAuthSchema";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -156,11 +157,7 @@ export function SignUpModal({ onSwitchToSignIn, onClose }: SignUpModalProps) {
         >
           Sign in
         </button>
-        <Link
-          href="/"
-          onClick={onClose}
-          className="mx-auto mt-4 flex w-fit items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-        >
+        <Link href="/" onClick={onClose} className={`mx-auto mt-4 w-fit ${PILL_BUTTON_CLASS}`}>
           <ArrowLeft size={16} />
           Back to home
         </Link>
@@ -285,11 +282,7 @@ export function SignUpModal({ onSwitchToSignIn, onClose }: SignUpModalProps) {
         </button>
       </p>
 
-      <Link
-        href="/"
-        onClick={onClose}
-        className="mx-auto flex w-fit items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-      >
+      <Link href="/" onClick={onClose} className={`mx-auto w-fit ${PILL_BUTTON_CLASS}`}>
         <ArrowLeft size={16} />
         Back to home
       </Link>

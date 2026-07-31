@@ -25,6 +25,7 @@ import Link from "next/link";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { campaignSignInSchema } from "@/lib/campaignAuthSchema";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 
 type FieldErrors = Partial<Record<string, string>>;
 
@@ -204,11 +205,7 @@ export function SignInModal({
         </button>
       </p>
 
-      <Link
-        href="/"
-        onClick={onClose}
-        className="mx-auto flex w-fit items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-      >
+      <Link href="/" onClick={onClose} className={`mx-auto w-fit ${PILL_BUTTON_CLASS}`}>
         <ArrowLeft size={16} />
         Back to home
       </Link>

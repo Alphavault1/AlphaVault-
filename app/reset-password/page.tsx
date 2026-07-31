@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 
 const inputBase =
   "w-full rounded-xl border bg-black px-4 py-3 font-body text-[15px] text-white placeholder:text-muted transition-colors focus:outline-none border-white/10 focus:border-gold";
@@ -103,10 +104,7 @@ export default function ResetPasswordPage() {
               This reset link is invalid or has already been used. Request a
               new one from the Sign In panel.
             </p>
-            <Link
-              href="/"
-              className="mt-8 inline-flex items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-            >
+            <Link href="/" className={`mt-8 ${PILL_BUTTON_CLASS}`}>
               <ArrowLeft size={16} />
               Back to home
             </Link>

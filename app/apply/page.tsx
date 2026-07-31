@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { ApplyForm } from "@/components/ApplyForm";
 import { SectionLabel } from "@/components/ui/SectionLabel";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 import vaultMark from "@/public/vault-mark.png";
 
 export const metadata: Metadata = {
@@ -22,10 +23,7 @@ export default function ApplyPage() {
 
       <div className="container-vault flex min-h-screen flex-col py-10">
         {/* Back link */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 self-start font-body text-sm text-slate transition-colors hover:text-white"
-        >
+        <Link href="/" className={`self-start ${PILL_BUTTON_CLASS}`}>
           <ArrowLeft size={16} />
           Back to home
         </Link>

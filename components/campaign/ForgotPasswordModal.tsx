@@ -23,6 +23,7 @@ import Link from "next/link";
 import { Loader2, ArrowLeft, Mail } from "lucide-react";
 import { campaignSignInSchema } from "@/lib/campaignAuthSchema";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 
 const inputBase =
   "w-full rounded-xl border bg-black px-4 py-3 font-body text-[15px] text-white placeholder:text-muted transition-colors focus:outline-none border-white/10 focus:border-gold";
@@ -140,11 +141,7 @@ export function ForgotPasswordModal({ onSwitchToSignIn, onClose }: ForgotPasswor
         Back to sign in
       </button>
 
-      <Link
-        href="/"
-        onClick={onClose}
-        className="mx-auto flex w-fit items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-      >
+      <Link href="/" onClick={onClose} className={`mx-auto w-fit ${PILL_BUTTON_CLASS}`}>
         <ArrowLeft size={16} />
         Back to home
       </Link>

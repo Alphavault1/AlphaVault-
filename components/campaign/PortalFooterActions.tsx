@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { SignOutButton } from "@/components/campaign/SignOutButton";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 
 /**
  * PortalFooterActions
@@ -20,18 +21,19 @@ import { SignOutButton } from "@/components/campaign/SignOutButton";
  * That immediacy is what was actually missing; it doesn't make sign-out
  * faster, but it removes the "did that even register?" moment that reads as
  * slowness on a plain text link with no visual state of its own.
+ *
+ * The visual treatment itself now lives in components/ui/buttonStyles.ts —
+ * shared with AdminHeader and every other "Back to home" site-wide, so this
+ * component and those can't drift apart from each other over time.
  */
-const buttonClass =
-  "inline-flex items-center gap-2 rounded-full border border-white/15 bg-surface-900 px-5 py-2.5 font-body text-sm text-slate transition-all duration-150 hover:border-gold/40 hover:bg-surface-800 hover:text-white active:scale-95 disabled:opacity-50 disabled:active:scale-100";
-
 export function PortalFooterActions() {
   return (
     <div className="mt-10 flex items-center justify-center gap-3">
-      <Link href="/" className={buttonClass}>
+      <Link href="/" className={PILL_BUTTON_CLASS}>
         <ArrowLeft size={15} />
         Back to home
       </Link>
-      <SignOutButton className={buttonClass} />
+      <SignOutButton className={PILL_BUTTON_CLASS} />
     </div>
   );
 }
