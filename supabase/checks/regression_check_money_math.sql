@@ -132,10 +132,14 @@ begin
   insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
   values (campaign_id, alice_id, 'https://x.com/alice/status/1', '0xAAAAAAAAAAAAAAAAAAAA', 'usdt_bep20')
   returning id into entry_alice;
+  -- Mirrors submit_campaign_entry's own side effect — a real entry always
+  -- increments this at submission time, before it can ever be reviewed.
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = alice_id;
 
   insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
   values (campaign_id, bob_id, 'https://x.com/bob/status/1', '0xBBBBBBBBBBBBBBBBBBBB', 'usdc_base')
   returning id into entry_bob;
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = bob_id;
 
   perform public.review_campaign_entry(entry_alice, 'accepted', null);
   perform public.review_campaign_entry(entry_bob, 'rejected', 'Did not meet requirements');
@@ -190,6 +194,7 @@ begin
   insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
   values (campaign_id, bob_id, 'https://x.com/bob/status/2', '0xCCCCCCCCCCCCCCCCCCCC', 'usdt_bep20')
   returning id into entry_id;
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = bob_id;
 
   perform public.review_campaign_entry(entry_id, 'accepted', null);
 
@@ -237,10 +242,12 @@ begin
   insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
   values (campaign_1, carol_id, 'https://x.com/carol/status/1', '0xDDDDDDDDDDDDDDDDDDDD', 'usdt_bep20')
   returning id into entry_1;
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = carol_id;
 
   insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
   values (campaign_2, carol_id, 'https://x.com/carol/status/2', '0xEEEEEEEEEEEEEEEEEEEE', 'usdc_base')
   returning id into entry_2;
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = carol_id;
 
   perform public.review_campaign_entry(entry_1, 'accepted', null);
   perform public.review_campaign_entry(entry_2, 'accepted', null);
@@ -290,6 +297,29 @@ begin
   end if;
   raise notice '=================================================';
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- Results — a real SELECT, not just RAISE messages.
+-- ---------------------------------------------------------------------------
+-- RAISE NOTICE/WARNING write to a separate message channel that some SQL
+-- clients surface differently (or not at all) in their UI. A plain SELECT
+-- is guaranteed to show up in the Results grid every single client
+-- supports — so that's the reliable source of truth here, not the RAISE
+-- lines above (those stay too, as a convenience if your client does show
+-- them, but don't rely on them alone).
+--
+-- This runs BEFORE the rollback below, which is exactly why it's safe: a
+-- SELECT sends its rows back to you the instant it executes, inside the
+-- still-open transaction. The rollback that follows only undoes the DATA
+-- CHANGES (the fake profiles, campaigns, entries) — it has no effect on
+-- results you've already received. You'll see this table, and the database
+-- will still end up with zero trace of any of this afterward.
+select
+  scenario,
+  case when passed then 'PASS' else 'FAIL' end as result,
+  detail
+from test_results
+order by id;
 
 -- Unconditional — nothing this script did is ever kept, pass or fail.
 rollback;
