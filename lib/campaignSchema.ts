@@ -163,11 +163,31 @@ export const entrySchema = z.object({
       (value) => /^https:\/\/(www\.)?(x\.com|twitter\.com)\//i.test(value),
       "Enter a valid X post link.",
     ),
+  // Both accepted chains (USDT on BEP20, USDC on Base) are EVM-compatible,
+  // so a real wallet address always has the same shape regardless of which
+  // one is selected: "0x" followed by exactly 40 hex characters (42 total).
+  //
+  // Deliberately checking SHAPE, not EIP-55 checksum casing. A checksum
+  // check would reject perfectly valid addresses that happen to be
+  // all-lowercase — which is extremely common; many wallets and exchanges
+  // export addresses that way, and lowercase is a fully valid EVM address,
+  // just not checksum-annotated. Enforcing checksum casing here would create
+  // false rejections of good addresses, which is a worse failure mode than
+  // the one this is fixing.
+  //
+  // This exists because a real submission was accepted with a 21-character
+  // address (should be 42) — the previous check only validated a length
+  // RANGE (8–255), not that the value was actually shaped like an address at
+  // all. A truncated or malformed address like that would silently fail to
+  // receive a payout with no indication anything was wrong until someone
+  // went looking.
   walletAddress: z
     .string()
     .trim()
-    .min(8, "Enter a valid wallet address.")
-    .max(255, "That wallet address is unusually long."),
+    .regex(
+      /^0x[a-fA-F0-9]{40}$/,
+      "Enter a valid wallet address — it should start with 0x, followed by 40 letters/numbers (42 characters total).",
+    ),
   // Which chain the reward is paid on. An unselected control submits "",
   // which fails the enum with our own message rather than zod's default
   // "Invalid enum value" wording.
