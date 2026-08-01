@@ -181,7 +181,19 @@ export type EntryInput = z.infer<typeof entrySchema>;
 export const reviewSchema = z.object({
   entryId: z.string().uuid(),
   status: z.enum(["accepted", "rejected"]),
-  reviewNote: z.string().trim().max(500, "Keep it under 500 characters.").optional(),
+  // .nullable() as well as .optional(): the review tables send an explicit
+  // `reviewNote: null` when approving/rejecting without a note. Plain
+  // .optional() accepts `string | undefined` but REJECTS null, so every
+  // no-note review failed validation with "Expected string, received null"
+  // before it ever reached the database. .transform normalizes null to
+  // undefined so downstream code keeps seeing one shape, not two.
+  reviewNote: z
+    .string()
+    .trim()
+    .max(500, "Keep it under 500 characters.")
+    .nullable()
+    .optional()
+    .transform((value) => value ?? undefined),
 });
 
 export type ReviewInput = z.infer<typeof reviewSchema>;
@@ -234,5 +246,12 @@ export const applicationSchema = z.object({
 export const reviewApplicationSchema = z.object({
   applicationId: z.string().uuid(),
   status: z.enum(["approved", "rejected"]),
-  reviewNote: z.string().trim().max(500, "Keep it under 500 characters.").optional(),
+  // Same null-vs-undefined fix as reviewSchema above — see the note there.
+  reviewNote: z
+    .string()
+    .trim()
+    .max(500, "Keep it under 500 characters.")
+    .nullable()
+    .optional()
+    .transform((value) => value ?? undefined),
 });
