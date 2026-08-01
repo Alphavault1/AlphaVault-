@@ -148,6 +148,78 @@ export async function createCampaign(input: unknown): Promise<CreateCampaignResu
   return { ok: true, campaignId: data.id as string };
 }
 
+/**
+ * duplicateCampaign
+ * --------------------
+ * Copies an existing campaign's name/requirements/reward/cap/disclaimer/
+ * type/reference-link into a brand new DRAFT campaign, then hands back its
+ * id so the caller can send the admin straight to its edit page for review
+ * before publishing.
+ *
+ * Deliberately NOT copied:
+ *   - status — always forced to 'draft', never duplicated straight to live.
+ *     Two identical campaigns both accepting entries by accident, from one
+ *     careless click, is exactly the kind of mistake this prevents. The
+ *     admin has to deliberately flip it live themselves.
+ *   - end_date — reset to null (no deadline) rather than copied. A copied
+ *     date is very likely already in the past, or awkwardly close — the
+ *     admin should set a fresh one on purpose, not inherit a stale one.
+ *   - created_by — set to whoever clicks Duplicate, not the original
+ *     creator. Duplicating is a new creation act.
+ *
+ * Same direct-insert pattern as createCampaign above — protected by the
+ * exact same campaigns_insert_admin RLS policy, no new database object
+ * needed for this feature at all.
+ */
+export async function duplicateCampaign(campaignId: string): Promise<CreateCampaignResult> {
+  const parsedId = z.string().uuid().safeParse(campaignId);
+  if (!parsedId.success) return { ok: false, error: "Invalid campaign." };
+
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+
+  const { data: source, error: fetchError } = await supabase
+    .from("campaigns")
+    .select("name, requirements, max_entries, reward_amount, disclaimer, campaign_type, reference_url")
+    .eq("id", parsedId.data)
+    .maybeSingle();
+
+  if (fetchError) return { ok: false, error: fetchError.message };
+  if (!source) return { ok: false, error: "Campaign not found." };
+
+  // Truncate the base name if needed so "<name> (Copy)" can never exceed the
+  // table's 100-character limit — a source campaign with an already-long
+  // name shouldn't make this fail on something as silly as a suffix.
+  const SUFFIX = " (Copy)";
+  const maxBaseLength = 100 - SUFFIX.length;
+  const baseName =
+    source.name.length > maxBaseLength ? source.name.slice(0, maxBaseLength) : source.name;
+
+  const { data, error } = await supabase
+    .from("campaigns")
+    .insert({
+      name: `${baseName}${SUFFIX}`,
+      requirements: source.requirements,
+      max_entries: source.max_entries,
+      reward_amount: source.reward_amount,
+      disclaimer: source.disclaimer,
+      status: "draft",
+      created_by: user.id,
+      reference_url: source.reference_url,
+      end_date: null,
+      campaign_type: source.campaign_type,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/campaign");
+  return { ok: true, campaignId: data.id as string };
+}
+
 const updateStatusSchema = z.object({
   campaignId: z.string().uuid(),
   status: z.enum(["draft", "live", "closed"]),

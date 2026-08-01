@@ -8,6 +8,7 @@ import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { rewardPoolTotal } from "@/lib/campaignRewards";
 import { CampaignStatusToggle } from "@/components/admin/CampaignStatusToggle";
+import { DuplicateCampaignButton } from "@/components/admin/DuplicateCampaignButton";
 import { ExportMenu } from "@/components/admin/ExportMenu";
 import { CampaignReferenceForm } from "@/components/admin/CampaignReferenceForm";
 import { DeleteCampaignButton } from "@/components/admin/DeleteCampaignButton";
@@ -254,6 +255,7 @@ export default async function AdminCampaignDetailPage({
               <Pencil size={14} />
               Edit campaign
             </Link>
+            <DuplicateCampaignButton campaignId={campaign.id} />
             <CampaignStatusToggle campaignId={campaign.id} currentStatus={campaign.status} />
             <ExportMenu campaignId={campaign.id} />
           </div>
