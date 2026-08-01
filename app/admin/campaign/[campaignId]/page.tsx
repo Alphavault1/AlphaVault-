@@ -70,7 +70,7 @@ export default async function AdminCampaignDetailPage({
     supabase.rpc("get_campaign_capacity", { p_campaign_id: campaignId }).maybeSingle(),
     supabase
       .from("campaign_entries")
-      .select("id, submission_url, wallet_address, payment_method, status, review_note, submitted_at, profiles(x_handle)")
+      .select("id, submission_url, wallet_address, payment_method, status, review_note, submitted_at, profiles!campaign_entries_profile_id_fkey(x_handle)")
       .eq("campaign_id", campaignId)
       .order("submitted_at", { ascending: false }),
   ]);
@@ -113,13 +113,34 @@ export default async function AdminCampaignDetailPage({
 
   const requiresApplication = campaign.campaign_type === "application_required";
 
-  const { data: applicationsRaw } = requiresApplication
+  // NOTE the explicit !campaign_applications_profile_id_fkey here, and the
+  // matching one on campaign_entries above. Both tables have TWO foreign
+  // keys to profiles — profile_id (the member) and reviewed_by (the admin who
+  // reviewed it). A bare `profiles(x_handle)` is therefore ambiguous, and
+  // PostgREST rejects it with error PGRST201 ("Could not embed because more
+  // than one relationship was found") instead of returning rows.
+  //
+  // This is what made applications and entries appear empty on this page
+  // while the rows plainly existed in the database: the query was failing,
+  // not returning nothing. Because the results were destructured as `data`
+  // only, with `error` discarded, a hard query failure rendered identically
+  // to a genuine empty list — no error, no log, no clue.
+  //
+  // Errors are now captured and surfaced below rather than swallowed.
+  const { data: applicationsRaw, error: applicationsError } = requiresApplication
     ? await supabase
         .from("campaign_applications")
-        .select("id, status, review_note, applied_at, profiles(x_handle)")
+        .select("id, status, review_note, applied_at, profiles!campaign_applications_profile_id_fkey(x_handle)")
         .eq("campaign_id", campaignId)
         .order("applied_at", { ascending: false })
-    : { data: null };
+    : { data: null, error: null };
+
+  if (applicationsError) {
+    console.error("[admin/campaign] applications query failed:", applicationsError);
+  }
+  if (entriesResult.error) {
+    console.error("[admin/campaign] entries query failed:", entriesResult.error);
+  }
 
   const applications: ReviewApplicationRow[] = (applicationsRaw ?? []).map((a) => {
     const profile = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles;
