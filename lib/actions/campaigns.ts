@@ -44,8 +44,13 @@ export async function submitCampaignEntry(input: unknown): Promise<ActionResult>
     return { ok: false, error: error.message };
   }
 
+  // Same reasoning as submitCampaignApplication below: the admin's review
+  // views need to see this entry appear, so they're revalidated here too
+  // rather than relying on an admin happening to trigger a refresh.
   revalidatePath(`/campaign/${parsed.data.campaignId}`);
   revalidatePath("/campaign");
+  revalidatePath(`/admin/campaign/${parsed.data.campaignId}`);
+  revalidatePath("/admin/campaign");
   return { ok: true };
 }
 
@@ -76,6 +81,12 @@ export async function submitCampaignApplication(input: unknown): Promise<ActionR
 
   if (error) return { ok: false, error: error.message };
 
+  // Revalidate the ADMIN views too, not just the member's own page — an
+  // admin reviewing applications needs to see this one appear. (The pages
+  // themselves are also force-dynamic now, so this is belt-and-braces rather
+  // than the sole guarantee.)
   revalidatePath(`/campaign/${parsed.data.campaignId}`);
+  revalidatePath(`/admin/campaign/${parsed.data.campaignId}`);
+  revalidatePath("/admin/campaign");
   return { ok: true };
 }

@@ -11,6 +11,15 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Never serve this page from the full-route cache — it shows live data that
+ * changes from outside this page's own actions (members applying, entering,
+ * or signing up at any time). A cached render here shows an admin, or a
+ * member, a stale picture of the current state with no indication it's
+ * stale. See the fuller note in app/admin/campaign/[campaignId]/page.tsx.
+ */
+export const dynamic = "force-dynamic";
+
+/**
  * /admin/campaign
  * ----------------
  * Three top-level metrics, then every campaign regardless of status (unlike

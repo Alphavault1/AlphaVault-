@@ -18,6 +18,29 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+/**
+ * Never serve this page from the full-route cache.
+ *
+ * This page shows live data that changes from OUTSIDE any admin action:
+ * members submit applications and entries at any time, and none of those
+ * member-side server actions revalidate this admin path (nor should they
+ * have to — an admin page shouldn't depend on every member action
+ * remembering to invalidate it). Without this, an admin could sit on a
+ * cached render from before an application existed and conclude, reasonably,
+ * that nothing had come in.
+ *
+ * That is exactly what happened: a member's application was confirmed
+ * present in the database and returned correctly by an API route using the
+ * same session and the same RLS path — while this page kept rendering "No
+ * applications yet" from cache.
+ *
+ * force-dynamic guarantees a fresh render per request. The cost is one
+ * database round trip per view, on an admin-only page with a handful of
+ * users — a trade worth making for a page whose entire job is showing the
+ * current state of incoming submissions.
+ */
+export const dynamic = "force-dynamic";
+
 interface AdminCampaignDetailPageProps {
   params: Promise<{ campaignId: string }>;
 }
