@@ -35,6 +35,14 @@ export default async function AdminDiagnosticPage() {
     .select("id, status, applied_at")
     .eq("campaign_id", CAMPAIGN_ID);
 
+  // The EXACT query the real admin page runs — including the embedded
+  // profiles join, which the previous API-route diagnostic omitted.
+  const { data: applicationsJoined, error: applicationsJoinedError } = await supabase
+    .from("campaign_applications")
+    .select("id, status, review_note, applied_at, profiles(x_handle)")
+    .eq("campaign_id", CAMPAIGN_ID)
+    .order("applied_at", { ascending: false });
+
   const { data: entries, error: entriesError } = await supabase
     .from("campaign_entries")
     .select("id, status")
@@ -51,6 +59,10 @@ export default async function AdminDiagnosticPage() {
     is_admin_error: isAdminError?.message ?? null,
     applications_count: applications?.length ?? null,
     applications_error: applicationsError?.message ?? null,
+    // The one that matters: same query the real page runs, join included.
+    applications_JOINED_count: applicationsJoined?.length ?? null,
+    applications_JOINED_error: applicationsJoinedError?.message ?? null,
+    applications_JOINED_raw: applicationsJoined,
     entries_count: entries?.length ?? null,
     entries_error: entriesError?.message ?? null,
   };
