@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
+import { rewardPoolTotal } from "@/lib/campaignRewards";
 import { CampaignStatusToggle } from "@/components/admin/CampaignStatusToggle";
 import { ExportMenu } from "@/components/admin/ExportMenu";
 import { CampaignReferenceForm } from "@/components/admin/CampaignReferenceForm";
@@ -137,6 +138,14 @@ export default async function AdminCampaignDetailPage({
   ).length;
   const totalPendingPayout = campaign.reward_amount * unpaidAcceptedEntries;
   const totalDisbursed = campaign.reward_amount * paidEntries;
+  // Not money owed yet — a planning ceiling. Same math as the member-facing
+  // Budget card (reward × max_entries), but a different question: Budget
+  // answers "is this worth my time" for someone deciding whether to apply;
+  // this answers "what's the most this campaign could ever cost me" for the
+  // person managing it. Requested directly, distinct from pending payout
+  // (which only reflects entries ALREADY accepted) — this reflects the
+  // campaign filling completely, which may never happen.
+  const maxIfFilled = rewardPoolTotal(campaign.reward_amount, campaign.max_entries);
 
   const requiresApplication = campaign.campaign_type === "application_required";
 
@@ -227,6 +236,15 @@ export default async function AdminCampaignDetailPage({
               <p className="font-display text-2xl text-white">
                 ${totalDisbursed.toLocaleString()}{" "}
                 <span className="font-body text-sm text-slate">total disbursed</span>
+              </p>
+              {/* Muted on purpose — the two figures above are real money
+                  (owed now, or already sent). This one is a hypothetical
+                  ceiling: what it WOULD cost if every remaining spot filled,
+                  which may never happen. Same gold/white treatment as the
+                  others would make it look equally "real," which it isn't. */}
+              <p className="font-display text-2xl text-muted">
+                ${maxIfFilled.toLocaleString()}{" "}
+                <span className="font-body text-sm text-slate">max if filled</span>
               </p>
             </div>
           </div>

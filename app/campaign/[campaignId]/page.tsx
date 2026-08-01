@@ -117,6 +117,18 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
   // bypassed — this was a confusing, broken UI, not a security gap).
   const isApproved = !requiresApplication || existingApplication?.status === "approved";
 
+  // ANOTHER GAP FOUND ALONGSIDE THE AUTO-CLOSE FEATURE: campaign.status was
+  // only ever used to render the LIVE/CLOSED/DRAFT badge — never actually
+  // checked before showing the Apply button or entry form. A campaign
+  // manually closed by an admin (for any reason other than being full) would
+  // show a CLOSED badge while the entry form kept rendering right below it,
+  // fully functional. submit_campaign_entry's own status check would still
+  // reject the submission server-side — same shape of bug as the isApproved
+  // one above: broken/misleading UI, not a real data-integrity gap. Fixed
+  // the same way: gate the actionable UI on the real value, not just display
+  // it in a badge.
+  const isLive = campaign.status === "live";
+
   const spotsLeft = capacity?.spots_left ?? 0;
   const hasEnded = campaign.end_date ? new Date(campaign.end_date) <= new Date() : false;
 
@@ -268,6 +280,10 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
                     <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
                       This campaign has ended.
                     </p>
+                  ) : !isLive ? (
+                    <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
+                      This campaign is closed.
+                    </p>
                   ) : (
                     <ApplyButton campaignId={campaign.id} />
                   )}
@@ -310,11 +326,28 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
                 </p>
               )}
 
+            {/* Closed for a reason OTHER than being full — spotsLeft > 0
+                still holds, so this is a manual closure, not the auto-close
+                feature (which only ever fires once spotsLeft hits 0, and
+                that case is already covered by the "full" message above,
+                which is more informative than a generic one). */}
             {profile.status === "approved" &&
               !existingEntry &&
               isApproved &&
               !hasEnded &&
-              spotsLeft > 0 && <EntryForm campaignId={campaign.id} />}
+              spotsLeft > 0 &&
+              !isLive && (
+                <p className="rounded-2xl border border-white/5 bg-surface-900 p-6 text-center font-body text-slate">
+                  This campaign is closed.
+                </p>
+              )}
+
+            {profile.status === "approved" &&
+              !existingEntry &&
+              isApproved &&
+              !hasEnded &&
+              spotsLeft > 0 &&
+              isLive && <EntryForm campaignId={campaign.id} />}
           </div>
         </div>
       </div>
