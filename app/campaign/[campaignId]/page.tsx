@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { paymentMethodLabel } from "@/lib/paymentMethods";
 import { rewardPoolFigure } from "@/lib/campaignRewards";
 import { SectionLabel } from "@/components/ui/SectionLabel";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { EntryForm } from "@/components/campaign/EntryForm";
 import { ApplyButton } from "@/components/campaign/ApplyButton";
@@ -93,7 +94,19 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
   const existingApplication = existingApplicationResult.data;
 
   const requiresApplication = campaign.campaign_type === "application_required";
-  const isApproved = !existingApplication || existingApplication.status === "approved";
+  // BUG FIX: this used to be `!existingApplication || existingApplication.status
+  // === "approved"` — reading "no application on file yet" as automatically
+  // approved. That's correct for campaigns that DON'T require an application
+  // (where "no application exists" genuinely means nothing's blocking entry),
+  // but backwards for ones that DO: "no application yet" there should mean
+  // "not eligible yet," not "cleared." The bug let ApplyButton and EntryForm
+  // render simultaneously for anyone who hadn't applied yet — two UI blocks
+  // that were designed to be mutually exclusive, appearing together with no
+  // spacing ever built for that combination, and letting someone fill out and
+  // attempt to submit an entry form that submit_campaign_entry's own
+  // server-side check would always reject anyway (that check was never
+  // bypassed — this was a confusing, broken UI, not a security gap).
+  const isApproved = !requiresApplication || existingApplication?.status === "approved";
 
   const spotsLeft = capacity?.spots_left ?? 0;
   const hasEnded = campaign.end_date ? new Date(campaign.end_date) <= new Date() : false;
@@ -105,10 +118,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-ink" />
 
       <div className="container-vault">
-        <Link
-          href="/campaign"
-          className="inline-flex items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-        >
+        <Link href="/campaign" className={PILL_BUTTON_CLASS}>
           <ArrowLeft size={16} />
           Back to campaigns
         </Link>

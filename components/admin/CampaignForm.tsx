@@ -2,29 +2,88 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { campaignFormSchema } from "@/lib/campaignSchema";
-import { createCampaign } from "@/lib/actions/admin";
+import { Loader2, Lock } from "lucide-react";
+import {
+  campaignFormSchema,
+  campaignEditFormSchema,
+  type CampaignFormInput,
+  type CampaignEditFormInput,
+} from "@/lib/campaignSchema";
+import { createCampaign, updateCampaignDetails } from "@/lib/actions/admin";
 
 const inputBase =
-  "w-full rounded-xl border bg-black px-4 py-3 font-body text-[15px] text-white placeholder:text-muted transition-colors focus:outline-none border-white/10 focus:border-gold";
+  "w-full rounded-xl border bg-black px-4 py-3 font-body text-[15px] text-white placeholder:text-muted transition-colors focus:outline-none border-white/10 focus:border-gold disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/10";
 
 const DEFAULT_DISCLAIMER =
   "We reserve the right to reject entries that do not meet the campaign requirements.";
 
-export function CampaignForm() {
+interface EditableFieldValues {
+  name: string;
+  requirements: string;
+  maxEntries: string;
+  rewardAmount: string;
+  disclaimer: string;
+  endDate: string;
+}
+
+interface CampaignFormProps {
+  /**
+   * "create" (default) is the original, unchanged behavior — every existing
+   * call site keeps working exactly as before without passing anything new.
+   *
+   * "edit" hides status/campaignType/referenceUrl entirely (see the long
+   * comment on campaignEditFormSchema in lib/campaignSchema.ts for exactly
+   * why those three are excluded — short version: two of them already have
+   * their own separate, working edit paths, and the third is a deliberately
+   * out-of-scope product decision, not an oversight), validates against the
+   * smaller edit schema, and calls updateCampaignDetails instead of
+   * createCampaign.
+   */
+  mode?: "create" | "edit";
+  /** Required when mode === "edit" — which campaign is being updated. */
+  campaignId?: string;
+  /** Required when mode === "edit" — the campaign's current values, prefilled. */
+  initialValues?: EditableFieldValues;
+  /**
+   * True once the campaign has ≥1 accepted entry. Disables the reward/cap
+   * inputs and shows why — this is a UX courtesy, NOT the actual
+   * enforcement. The real guarantee is the campaigns_prevent_locked_field_
+   * changes database trigger (migration 10), which blocks the change
+   * regardless of whether this prop is ever wrong, stale, or bypassed
+   * entirely (e.g. a direct API call). If this prop and the trigger ever
+   * disagree, the trigger wins — the admin would just see a less specific
+   * error message than usual, not an actual gap in protection.
+   */
+  isLocked?: boolean;
+  /** How many accepted entries exist — only used for the lock explanation's wording. */
+  acceptedEntriesCount?: number;
+}
+
+export function CampaignForm({
+  mode = "create",
+  campaignId,
+  initialValues,
+  isLocked = false,
+  acceptedEntriesCount = 0,
+}: CampaignFormProps) {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [requirements, setRequirements] = useState("");
-  const [maxEntries, setMaxEntries] = useState("10");
-  const [rewardAmount, setRewardAmount] = useState("");
-  const [disclaimer, setDisclaimer] = useState(DEFAULT_DISCLAIMER);
+  const isEdit = mode === "edit";
+
+  const [name, setName] = useState(initialValues?.name ?? "");
+  const [requirements, setRequirements] = useState(initialValues?.requirements ?? "");
+  const [maxEntries, setMaxEntries] = useState(initialValues?.maxEntries ?? "10");
+  const [rewardAmount, setRewardAmount] = useState(initialValues?.rewardAmount ?? "");
+  const [disclaimer, setDisclaimer] = useState(initialValues?.disclaimer ?? DEFAULT_DISCLAIMER);
+  const [endDate, setEndDate] = useState(initialValues?.endDate ?? "");
+
+  // create-only fields — irrelevant and unused in edit mode, but the hooks
+  // still need to exist unconditionally (rules of hooks), so they're simply
+  // never rendered or read from when isEdit is true.
   const [status, setStatus] = useState<"draft" | "live" | "closed">("draft");
   const [campaignType, setCampaignType] = useState<"direct_submission" | "application_required">(
     "direct_submission",
   );
   const [referenceUrl, setReferenceUrl] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -33,6 +92,36 @@ export function CampaignForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitError(null);
+
+    if (isEdit) {
+      const parsed = campaignEditFormSchema.safeParse({
+        campaignId,
+        name,
+        requirements,
+        maxEntries,
+        rewardAmount,
+        disclaimer,
+        endDate,
+      });
+
+      if (!parsed.success) {
+        setErrors(collectFieldErrors(parsed.error.issues));
+        return;
+      }
+
+      setErrors({});
+      setSubmitting(true);
+
+      const result = await updateCampaignDetails(parsed.data satisfies CampaignEditFormInput);
+      if (!result.ok) {
+        setSubmitError(result.error);
+        setSubmitting(false);
+        return;
+      }
+
+      router.push(`/admin/campaign/${campaignId}`);
+      return;
+    }
 
     const parsed = campaignFormSchema.safeParse({
       name,
@@ -47,19 +136,14 @@ export function CampaignForm() {
     });
 
     if (!parsed.success) {
-      const next: Partial<Record<string, string>> = {};
-      for (const issue of parsed.error.issues) {
-        const key = issue.path[0];
-        if (typeof key === "string" && !next[key]) next[key] = issue.message;
-      }
-      setErrors(next);
+      setErrors(collectFieldErrors(parsed.error.issues));
       return;
     }
 
     setErrors({});
     setSubmitting(true);
 
-    const result = await createCampaign(parsed.data);
+    const result = await createCampaign(parsed.data satisfies CampaignFormInput);
     if (!result.ok) {
       setSubmitError(result.error);
       setSubmitting(false);
@@ -97,6 +181,15 @@ export function CampaignForm() {
           onChange={(e) => setRequirements(e.target.value)}
           className={`${inputBase} resize-none`}
         />
+        {/* Each line becomes its own requirement — a real point of confusion
+            previously (a campaign showed "5 requirements" when one had been
+            typed across 5 lines for readability). This count updates live so
+            the effect of a line break is visible before submitting, not
+            discovered after. */}
+        <p className="mt-1.5 font-body text-xs text-muted">
+          {countNonEmptyLines(requirements)} requirement
+          {countNonEmptyLines(requirements) === 1 ? "" : "s"} — each new line is a separate one.
+        </p>
         {errors.requirements && (
           <p className="mt-1.5 font-body text-xs text-red-400">{errors.requirements}</p>
         )}
@@ -113,6 +206,7 @@ export function CampaignForm() {
             min={1}
             value={maxEntries}
             onChange={(e) => setMaxEntries(e.target.value)}
+            disabled={isEdit && isLocked}
             className={inputBase}
           />
           {errors.maxEntries && (
@@ -130,6 +224,7 @@ export function CampaignForm() {
             step="0.01"
             value={rewardAmount}
             onChange={(e) => setRewardAmount(e.target.value)}
+            disabled={isEdit && isLocked}
             className={inputBase}
           />
           {errors.rewardAmount && (
@@ -137,6 +232,18 @@ export function CampaignForm() {
           )}
         </div>
       </div>
+
+      {isEdit && isLocked && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-gold/20 bg-gold/5 p-4">
+          <Lock size={16} className="mt-0.5 shrink-0 text-gold" />
+          <p className="font-body text-sm text-slate">
+            Reward and entry cap are locked — this campaign already has{" "}
+            {acceptedEntriesCount} accepted {acceptedEntriesCount === 1 ? "entry" : "entries"}.
+            Changing either now would make the payout math wrong for what&rsquo;s already been
+            credited. Every other field here stays editable.
+          </p>
+        </div>
+      )}
 
       <div>
         <label htmlFor="cf-end-date" className="mb-2 block font-body text-sm text-slate">
@@ -170,57 +277,68 @@ export function CampaignForm() {
         )}
       </div>
 
-      <div>
-        <label htmlFor="cf-status" className="mb-2 block font-body text-sm text-slate">
-          Status
-        </label>
-        <select
-          id="cf-status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "draft" | "live" | "closed")}
-          className={inputBase}
-        >
-          <option value="draft">Draft — not visible to members yet</option>
-          <option value="live">Live — open for entries now</option>
-          <option value="closed">Closed</option>
-        </select>
-      </div>
+      {!isEdit && (
+        <>
+          <div>
+            <label htmlFor="cf-status" className="mb-2 block font-body text-sm text-slate">
+              Status
+            </label>
+            <select
+              id="cf-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "draft" | "live" | "closed")}
+              className={inputBase}
+            >
+              <option value="draft">Draft — not visible to members yet</option>
+              <option value="live">Live — open for entries now</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
 
-      <div>
-        <label htmlFor="cf-campaign-type" className="mb-2 block font-body text-sm text-slate">
-          Campaign type
-        </label>
-        <select
-          id="cf-campaign-type"
-          value={campaignType}
-          onChange={(e) =>
-            setCampaignType(e.target.value as "direct_submission" | "application_required")
-          }
-          className={inputBase}
-        >
-          <option value="direct_submission">Direct submission — members can enter right away</option>
-          <option value="application_required">
-            Application required — members must apply and be approved first
-          </option>
-        </select>
-      </div>
+          <div>
+            <label htmlFor="cf-campaign-type" className="mb-2 block font-body text-sm text-slate">
+              Campaign type
+            </label>
+            <select
+              id="cf-campaign-type"
+              value={campaignType}
+              onChange={(e) =>
+                setCampaignType(e.target.value as "direct_submission" | "application_required")
+              }
+              className={inputBase}
+            >
+              <option value="direct_submission">Direct submission — members can enter right away</option>
+              <option value="application_required">
+                Application required — members must apply and be approved first
+              </option>
+            </select>
+          </div>
 
-      <div>
-        <label htmlFor="cf-reference" className="mb-2 block font-body text-sm text-slate">
-          Reference link
-        </label>
-        <input
-          id="cf-reference"
-          type="url"
-          placeholder="https://x.com/example/status/..."
-          value={referenceUrl}
-          onChange={(e) => setReferenceUrl(e.target.value)}
-          className={inputBase}
-        />
-        {errors.referenceUrl && (
-          <p className="mt-1.5 font-body text-xs text-red-400">{errors.referenceUrl}</p>
-        )}
-      </div>
+          <div>
+            <label htmlFor="cf-reference" className="mb-2 block font-body text-sm text-slate">
+              Reference link
+            </label>
+            <input
+              id="cf-reference"
+              type="url"
+              placeholder="https://x.com/example/status/..."
+              value={referenceUrl}
+              onChange={(e) => setReferenceUrl(e.target.value)}
+              className={inputBase}
+            />
+            {errors.referenceUrl && (
+              <p className="mt-1.5 font-body text-xs text-red-400">{errors.referenceUrl}</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {isEdit && (
+        <p className="font-body text-xs text-muted">
+          Status, campaign type, and the reference link are edited separately, from the campaign
+          page — not here.
+        </p>
+      )}
 
       {submitError && (
         <p role="alert" className="font-body text-sm text-red-400">
@@ -236,12 +354,29 @@ export function CampaignForm() {
         {submitting ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            Creating…
+            {isEdit ? "Saving…" : "Creating…"}
           </>
+        ) : isEdit ? (
+          "Save changes"
         ) : (
           "Create campaign"
         )}
       </button>
     </form>
   );
+}
+
+function countNonEmptyLines(value: string): number {
+  return value.split("\n").filter((line) => line.trim().length > 0).length;
+}
+
+function collectFieldErrors(
+  issues: { path: PropertyKey[]; message: string }[],
+): Partial<Record<string, string>> {
+  const next: Partial<Record<string, string>> = {};
+  for (const issue of issues) {
+    const key = issue.path[0];
+    if (typeof key === "string" && !next[key]) next[key] = issue.message;
+  }
+  return next;
 }

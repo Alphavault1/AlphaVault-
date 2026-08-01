@@ -69,6 +69,58 @@ export const campaignFormSchema = z.object({
 export type CampaignFormInput = z.infer<typeof campaignFormSchema>;
 
 /**
+ * campaignEditFormSchema / campaignEditSubmissionSchema
+ * ---------------------------------------------------------
+ * The editable subset of a campaign, post-creation: name, requirements,
+ * maxEntries, rewardAmount, disclaimer, endDate — the exact same rules as
+ * campaignFormSchema/campaignSubmissionSchema above, just without status,
+ * campaignType, or referenceUrl.
+ *
+ * Those three are deliberately excluded, not forgotten:
+ *   - status and referenceUrl already have their own dedicated, working,
+ *     separately-tested edit paths (CampaignStatusToggle,
+ *     CampaignReferenceForm / updateCampaignReference) — folding them into
+ *     this form too would mean two different code paths that can write the
+ *     same column, which is exactly the kind of duplication that drifts out
+ *     of sync over time.
+ *   - campaignType (direct_submission vs application_required) changes the
+ *     RULES entries are gated by — flipping it mid-campaign, after some
+ *     entries already exist under the old rule, is a genuine product
+ *     decision with its own edge cases, not a data-shape decision like the
+ *     others. Deliberately left out of this first pass rather than bundled
+ *     in without being asked for.
+ *
+ * reward_amount and max_entries ARE included here — they're editable
+ * through this schema whenever the campaign allows it. What actually
+ * enforces "not editable once accepted entries exist" is the database
+ * trigger (campaigns_prevent_locked_field_changes, migration 10), not this
+ * schema — the schema's job is shape/range validation, not that business
+ * rule, same separation of concerns as everywhere else in this file.
+ */
+export const campaignEditFormSchema = z.object({
+  campaignId: z.string().uuid(),
+  name: campaignFormSchema.shape.name,
+  requirements: campaignFormSchema.shape.requirements,
+  maxEntries: campaignFormSchema.shape.maxEntries,
+  rewardAmount: campaignFormSchema.shape.rewardAmount,
+  disclaimer: campaignFormSchema.shape.disclaimer,
+  endDate: campaignFormSchema.shape.endDate,
+});
+
+export type CampaignEditFormInput = z.infer<typeof campaignEditFormSchema>;
+
+export const campaignEditSubmissionSchema = z.object({
+  campaignId: z.string().uuid(),
+  name: z.string().trim().min(3).max(100),
+  requirements: z.array(z.string().min(2).max(300)).min(1).max(20),
+  maxEntries: z.coerce.number().int().min(1).max(100_000),
+  rewardAmount: z.coerce.number().nonnegative().max(1_000_000),
+  disclaimer: z.string().trim().min(10).max(1000),
+  endDate: z.date().optional(),
+});
+
+
+/**
  * campaignSubmissionSchema
  * ---------------------------
  * The server action's real input shape — NOT the same as campaignFormSchema

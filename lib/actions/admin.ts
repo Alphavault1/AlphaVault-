@@ -8,6 +8,7 @@ import {
   verificationSchema,
   campaignSubmissionSchema,
   campaignReferenceSchema,
+  campaignEditSubmissionSchema,
   deleteCampaignSchema,
   setMemberRoleSchema,
   reviewApplicationSchema,
@@ -190,6 +191,55 @@ export async function updateCampaignReference(input: unknown): Promise<ActionRes
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/admin/campaign/${parsed.data.campaignId}`);
   revalidatePath(`/campaign/${parsed.data.campaignId}`);
+  return { ok: true };
+}
+
+/**
+ * updateCampaignDetails
+ * ------------------------
+ * Edits a campaign's name, requirements, reward amount, entry cap,
+ * disclaimer, and end date after creation — a plain RLS-gated update
+ * (campaigns_update_admin), same shape as updateCampaignReference above.
+ *
+ * What actually enforces "reward_amount/max_entries locked once ≥1 entry is
+ * accepted" is NOT this function — it's the campaigns_prevent_locked_field_
+ * changes trigger (migration 10), which fires on every UPDATE to this table
+ * regardless of which code wrote it. This function still surfaces that
+ * trigger's error message directly when it fires (same "return the
+ * database's own message" convention as every other action here) — so an
+ * admin sees a specific, accurate reason, not a generic failure. The
+ * trigger is the actual guarantee; this is just where its message reaches
+ * the person editing the form.
+ */
+export async function updateCampaignDetails(input: unknown): Promise<ActionResult> {
+  const parsed = campaignEditSubmissionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase
+    .from("campaigns")
+    .update({
+      name: parsed.data.name,
+      requirements: parsed.data.requirements,
+      max_entries: parsed.data.maxEntries,
+      reward_amount: parsed.data.rewardAmount,
+      disclaimer: parsed.data.disclaimer,
+      end_date: parsed.data.endDate?.toISOString() ?? null,
+    })
+    .eq("id", parsed.data.campaignId);
+
+  if (error) return { ok: false, error: error.message };
+
+  // Name and the reward figure both surface on the list cards (admin
+  // dashboard AND the member campaign list), not just the detail pages —
+  // unlike updateCampaignReference, which only ever needed the two detail
+  // pages since reference_url isn't shown on either card.
+  revalidatePath(`/admin/campaign/${parsed.data.campaignId}`);
+  revalidatePath(`/campaign/${parsed.data.campaignId}`);
+  revalidatePath("/admin/campaign");
+  revalidatePath("/campaign");
   return { ok: true };
 }
 

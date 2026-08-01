@@ -170,19 +170,27 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- SCENARIO B — the actual risk this script exists to catch.
--- Accept one entry at reward_amount=25 (bob is credited $25). Then simulate
--- a FUTURE edit-campaign feature changing the price to $15 — today there's
--- no UI for this, so this UPDATE is standing in for that feature directly.
--- Then delete. Expected (correct) result: bob's earnings return to exactly
--- 0, because he should lose exactly what he was actually paid. What CURRENT
--- delete_campaign actually does: subtracts the campaign's price AT THE TIME
--- OF DELETION (15), not the price he was actually paid (25) — leaving him
--- at 25 - 15 = 10, a real $10 error sitting in his earnings total.
+-- SCENARIO B — the actual risk this script exists to catch, now that the
+-- protection has been built.
+--
+-- Accept one entry at reward_amount=25 (bob is credited $25). Then attempt
+-- to change the campaign's reward_amount to $15 — standing in for what the
+-- campaign-editing feature's own form would attempt. This is no longer a
+-- bare UPDATE the way it was before campaigns_prevent_locked_field_changes
+-- existed (migration 10) — it's wrapped in its own nested block specifically
+-- to CATCH the exception that update should now raise, and check that it
+-- actually was raised, rather than let it abort the whole script.
+--
+-- If the trigger is doing its job, that UPDATE never succeeds — meaning
+-- reward_amount stays 25, and deleting the campaign afterward correctly
+-- reverses exactly what was paid, back to 0. This is the same scenario that
+-- used to fail (leaving bob $10 richer than he should be) now proving the
+-- fix actually closes that gap, not just that the code compiles.
 -- ---------------------------------------------------------------------------
 do $$
 declare
   bob_id uuid; admin_id uuid; campaign_id uuid; entry_id uuid; earnings numeric;
+  reward_after_attempt numeric;
 begin
   select value into bob_id   from test_ids where key = 'bob';
   select value into admin_id from test_ids where key = 'admin';
@@ -204,17 +212,42 @@ begin
     format('bob.total_earnings = %s (expected 25.00)', earnings)
   );
 
-  -- Standing in for a future "edit campaign" feature — this UPDATE is
-  -- exactly what that feature would do to reward_amount.
-  update public.campaigns set reward_amount = 15.00 where id = campaign_id;
+  -- Nested block specifically to catch the exception the trigger SHOULD
+  -- raise here — without this nested begin/exception, an unhandled
+  -- exception would abort the entire script at this line, and none of the
+  -- scenarios after this one would ever run or report anything.
+  begin
+    update public.campaigns set reward_amount = 15.00 where id = campaign_id;
+    -- Reaching this line means the UPDATE succeeded — the trigger did NOT
+    -- block it. That's a real failure of the protection, not a test-script
+    -- problem.
+    insert into test_results (scenario, passed, detail) values (
+      'B.2 — reward_amount change is BLOCKED once an entry is accepted', false,
+      'The UPDATE succeeded when it should have been rejected — campaigns_prevent_locked_field_changes is not protecting this case.'
+    );
+  exception
+    when others then
+      insert into test_results (scenario, passed, detail) values (
+        'B.2 — reward_amount change is BLOCKED once an entry is accepted', true,
+        format('Correctly rejected by the database: %s', sqlerrm)
+      );
+  end;
+
+  -- Independent confirmation, not just trusting that the exception implies
+  -- nothing changed: read the value back directly.
+  select reward_amount into reward_after_attempt from public.campaigns where id = campaign_id;
+  insert into test_results (scenario, passed, detail) values (
+    'B.3 — reward_amount is still 25 after the blocked attempt', reward_after_attempt = 25.00,
+    format('campaigns.reward_amount = %s (expected still 25.00, unchanged)', reward_after_attempt)
+  );
 
   perform public.delete_campaign(campaign_id);
 
   select total_earnings into earnings from public.profiles where id = bob_id;
   insert into test_results (scenario, passed, detail) values (
-    'B.2 — delete correctly reverses the ORIGINAL amount bob was paid, not the current price',
+    'B.4 — delete correctly reverses the full 25 (reward_amount was never actually changed)',
     earnings = 0,
-    format('bob.total_earnings = %s (expected 0.00 — a non-zero value here is real, quantifiable earnings corruption, currently %s off)', earnings, 25.00 - earnings)
+    format('bob.total_earnings = %s (expected 0.00 — a non-zero value here would mean the lock failed to hold and earnings are corrupted)', earnings)
   );
 end $$;
 
@@ -271,7 +304,81 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Report — every result, then a summary.
+-- SCENARIO D — the trigger's OTHER rule, never tested until now: max_entries
+-- can't drop below however many entries already exist, even before any
+-- acceptance at all (this is independent of Scenario B's lock, which only
+-- kicks in once an entry is ACCEPTED — this rule applies to pending entries
+-- too, from the moment a campaign has any entries whatsoever).
+--
+-- alice and bob are reused here — both fully reset to 0/0/0/$0 by the
+-- deletes in scenarios A and B above, so they're safe to reuse as a clean
+-- slate rather than declaring two more fake profiles for one scenario.
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  alice_id uuid; bob_id uuid; admin_id uuid; campaign_id uuid;
+  entry_alice uuid; entry_bob uuid; max_after_attempt integer;
+begin
+  select value into alice_id from test_ids where key = 'alice';
+  select value into bob_id   from test_ids where key = 'bob';
+  select value into admin_id from test_ids where key = 'admin';
+
+  insert into public.campaigns (name, requirements, max_entries, reward_amount, status, created_by)
+  values ('Regression test D', array['Post about it'], 5, 10.00, 'live', admin_id)
+  returning id into campaign_id;
+
+  insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
+  values (campaign_id, alice_id, 'https://x.com/alice/status/2', '0xFFFFFFFFFFFFFFFFFFFF', 'usdt_bep20')
+  returning id into entry_alice;
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = alice_id;
+
+  insert into public.campaign_entries (campaign_id, profile_id, submission_url, wallet_address, payment_method)
+  values (campaign_id, bob_id, 'https://x.com/bob/status/3', '0x1111111111111111111A', 'usdc_base')
+  returning id into entry_bob;
+  update public.profiles set campaigns_entered = campaigns_entered + 1 where id = bob_id;
+
+  -- Two pending entries now exist (neither accepted yet) — occupied=2.
+  -- Attempting to drop max_entries to 1 (below the 2 already submitted)
+  -- should be blocked, even though accepted_count is still 0 and Scenario
+  -- B's lock hasn't engaged at all.
+  begin
+    update public.campaigns set max_entries = 1 where id = campaign_id;
+    insert into test_results (scenario, passed, detail) values (
+      'D.1 — max_entries can''t drop below entries already submitted', false,
+      'The UPDATE to max_entries=1 succeeded when it should have been rejected — 2 entries already exist.'
+    );
+  exception
+    when others then
+      insert into test_results (scenario, passed, detail) values (
+        'D.1 — max_entries can''t drop below entries already submitted', true,
+        format('Correctly rejected by the database: %s', sqlerrm)
+      );
+  end;
+
+  -- Boundary check: setting it to EXACTLY the occupied count (2) should be
+  -- allowed — this rule is "can't go below," not "can't go below or equal."
+  update public.campaigns set max_entries = 2 where id = campaign_id;
+  select max_entries into max_after_attempt from public.campaigns where id = campaign_id;
+  insert into test_results (scenario, passed, detail) values (
+    'D.2 — max_entries CAN be set to exactly the occupied count (boundary)',
+    max_after_attempt = 2,
+    format('campaigns.max_entries = %s (expected 2 — this update should succeed)', max_after_attempt)
+  );
+
+  -- Normal editing still works when nothing is locked: raising it well
+  -- above occupied should succeed without any error.
+  update public.campaigns set max_entries = 20 where id = campaign_id;
+  select max_entries into max_after_attempt from public.campaigns where id = campaign_id;
+  insert into test_results (scenario, passed, detail) values (
+    'D.3 — max_entries can be freely raised when nothing is locked',
+    max_after_attempt = 20,
+    format('campaigns.max_entries = %s (expected 20)', max_after_attempt)
+  );
+
+  perform public.delete_campaign(campaign_id);
+end $$;
+
+
 -- ---------------------------------------------------------------------------
 do $$
 declare

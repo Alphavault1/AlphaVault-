@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { SectionLabel } from "@/components/ui/SectionLabel";
+import { PILL_BUTTON_CLASS } from "@/components/ui/buttonStyles";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
 import { CampaignStatusToggle } from "@/components/admin/CampaignStatusToggle";
 import { ExportMenu } from "@/components/admin/ExportMenu";
@@ -115,10 +116,7 @@ export default async function AdminCampaignDetailPage({
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-ink" />
 
       <div className="container-vault">
-        <Link
-          href="/admin/campaign"
-          className="inline-flex items-center gap-2 font-body text-sm text-slate transition-colors hover:text-white"
-        >
+        <Link href="/admin/campaign" className={PILL_BUTTON_CLASS}>
           <ArrowLeft size={16} />
           Back to dashboard
         </Link>
@@ -158,6 +156,10 @@ export default async function AdminCampaignDetailPage({
           </div>
 
           <div className="flex flex-col items-start gap-4 sm:items-end">
+            <Link href={`/admin/campaign/${campaign.id}/edit`} className={PILL_BUTTON_CLASS}>
+              <Pencil size={14} />
+              Edit campaign
+            </Link>
             <CampaignStatusToggle campaignId={campaign.id} currentStatus={campaign.status} />
             <ExportMenu campaignId={campaign.id} />
           </div>
