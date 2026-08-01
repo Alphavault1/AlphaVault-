@@ -218,6 +218,18 @@ export const reviewSchema = z.object({
 
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
+/**
+ * "Total paid" used to just mean "accepted" — a calculation of what's owed,
+ * labeled as if the money had already moved. It hadn't; the real transfer
+ * happens manually, off-platform. This schema backs the real distinction:
+ * an entry starts 'unpaid' the moment it's accepted, and only becomes 'paid'
+ * when an admin explicitly confirms they sent it.
+ */
+export const payoutStatusSchema = z.object({
+  entryId: z.string().uuid(),
+  payoutStatus: z.enum(["unpaid", "paid"]),
+});
+
 export const banSchema = z.object({
   profileId: z.string().uuid(),
   // 0 lifts an existing ban — same convention as the RPC itself.

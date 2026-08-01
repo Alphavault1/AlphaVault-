@@ -15,9 +15,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Loader2, Search } from "lucide-react";
+import { ExternalLink, Loader2, Search, DollarSign } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
-import { reviewCampaignEntry } from "@/lib/actions/admin";
+import { reviewCampaignEntry, setEntryPayoutStatus } from "@/lib/actions/admin";
 import { paymentMethodLabel } from "@/lib/paymentMethods";
 
 export interface ReviewEntryRow {
@@ -27,6 +27,7 @@ export interface ReviewEntryRow {
   walletAddress: string;
   paymentMethod: string;
   status: string;
+  payoutStatus: string;
   reviewNote: string | null;
   submittedAt: string;
 }
@@ -63,6 +64,30 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
     setPendingId(entryId);
 
     const result = await reviewCampaignEntry({ entryId, status, reviewNote: null });
+    setPendingId(null);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    router.refresh();
+  }
+
+  /**
+   * Toggles paid/unpaid — a real click on a real button by a real person
+   * confirming they actually sent the money should have a way back if
+   * clicked by accident, not just a one-way door. The RPC (migration 12)
+   * is what actually stops this from ever applying to a non-accepted
+   * entry; this function doesn't re-check that itself, since there's
+   * nothing more correct it could do than what the database already
+   * guarantees.
+   */
+  async function handlePayoutToggle(entryId: string, nextStatus: "paid" | "unpaid") {
+    setError(null);
+    setPendingId(entryId);
+
+    const result = await setEntryPayoutStatus({ entryId, payoutStatus: nextStatus });
     setPendingId(null);
 
     if (!result.ok) {
@@ -115,6 +140,20 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
             <div className="flex items-center gap-3">
               <p className="font-body font-semibold text-white">@{entry.xHandle}</p>
               <StatusBadge status={entry.status} />
+              {/* Payout pill — only meaningful for accepted entries. Nothing
+                  was ever owed for a pending or rejected one, so no pill
+                  shows for those. */}
+              {entry.status === "accepted" && (
+                <span
+                  className={`rounded-full px-2.5 py-0.5 font-body text-xs font-medium ${
+                    entry.payoutStatus === "paid"
+                      ? "bg-green-500/15 text-green-400"
+                      : "bg-white/10 text-slate"
+                  }`}
+                >
+                  {entry.payoutStatus === "paid" ? "PAID" : "UNPAID"}
+                </span>
+              )}
             </div>
             <a
               href={entry.submissionUrl}
@@ -150,6 +189,34 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Reject
+              </button>
+            </div>
+          )}
+
+          {entry.status === "accepted" && (
+            <div className="flex shrink-0 gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  handlePayoutToggle(entry.id, entry.payoutStatus === "paid" ? "unpaid" : "paid")
+                }
+                disabled={pendingId === entry.id}
+                className={
+                  entry.payoutStatus === "paid"
+                    ? "inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    : "inline-flex items-center gap-2 rounded-full bg-gold px-4 py-2 font-body text-sm font-medium text-black transition-shadow hover:shadow-gold-glow disabled:cursor-not-allowed disabled:opacity-50"
+                }
+              >
+                {pendingId === entry.id ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : entry.payoutStatus === "paid" ? (
+                  "Mark as unpaid"
+                ) : (
+                  <>
+                    <DollarSign size={14} />
+                    Mark as paid
+                  </>
+                )}
               </button>
             </div>
           )}

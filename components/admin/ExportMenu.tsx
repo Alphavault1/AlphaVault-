@@ -16,7 +16,7 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
-import { getCampaignWalletExport, getCampaignSubmissionsExport } from "@/lib/actions/admin";
+import { getCampaignWalletExport, getUnpaidWalletExport, getCampaignSubmissionsExport } from "@/lib/actions/admin";
 import { paymentMethodLabel } from "@/lib/paymentMethods";
 
 function downloadFile(filename: string, content: string, mimeType: string) {
@@ -36,7 +36,7 @@ function toCsvRow(values: unknown[]) {
 }
 
 export function ExportMenu({ campaignId }: { campaignId: string }) {
-  const [loading, setLoading] = useState<"wallets" | "submissions" | "links" | null>(null);
+  const [loading, setLoading] = useState<"wallets" | "unpaid" | "submissions" | "links" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleWallets() {
@@ -62,6 +62,29 @@ export function ExportMenu({ campaignId }: { campaignId: string }) {
       ),
     ].join("\n");
     downloadFile(`campaign-${campaignId}-wallets.csv`, csv, "text/csv;charset=utf-8;");
+  }
+
+  /**
+   * Same export shape as handleWallets, filtered server-side to unpaid only
+   * — this is the list an admin actually works from when running a payout
+   * batch: send to these, then mark each one paid. The "Accepted wallets"
+   * export stays as the full, unfiltered record for auditing.
+   */
+  async function handleUnpaidWallets() {
+    setError(null);
+    setLoading("unpaid");
+    const result = await getUnpaidWalletExport(campaignId);
+    setLoading(null);
+    if (!result.ok) return setError(result.error);
+    if (result.rows.length === 0) return setError("Nothing unpaid right now — everyone's been paid.");
+
+    const csv = [
+      toCsvRow(["x_handle", "wallet_address", "payment_method", "submission_url", "reviewed_at"]),
+      ...result.rows.map((r) =>
+        toCsvRow([r.x_handle, r.wallet_address, paymentMethodLabel(r.payment_method), r.submission_url, r.reviewed_at]),
+      ),
+    ].join("\n");
+    downloadFile(`campaign-${campaignId}-unpaid-wallets.csv`, csv, "text/csv;charset=utf-8;");
   }
 
   async function handleSubmissions() {
@@ -99,7 +122,11 @@ export function ExportMenu({ campaignId }: { campaignId: string }) {
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={handleWallets} disabled={loading !== null} className={buttonClass}>
           {loading === "wallets" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-          Accepted wallets
+          Export all accepted
+        </button>
+        <button type="button" onClick={handleUnpaidWallets} disabled={loading !== null} className={buttonClass}>
+          {loading === "unpaid" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+          Export unpaid wallets
         </button>
         <button type="button" onClick={handleSubmissions} disabled={loading !== null} className={buttonClass}>
           {loading === "submissions" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}

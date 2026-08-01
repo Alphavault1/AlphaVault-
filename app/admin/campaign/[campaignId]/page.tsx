@@ -70,7 +70,7 @@ export default async function AdminCampaignDetailPage({
     supabase.rpc("get_campaign_capacity", { p_campaign_id: campaignId }).maybeSingle(),
     supabase
       .from("campaign_entries")
-      .select("id, submission_url, wallet_address, payment_method, status, review_note, submitted_at, profiles!campaign_entries_profile_id_fkey(x_handle)")
+      .select("id, submission_url, wallet_address, payment_method, status, payout_status, review_note, submitted_at, profiles!campaign_entries_profile_id_fkey(x_handle)")
       .eq("campaign_id", campaignId)
       .order("submitted_at", { ascending: false }),
   ]);
@@ -92,7 +92,6 @@ export default async function AdminCampaignDetailPage({
   const entriesRaw = entriesResult.data;
 
   const acceptedEntries = capacity?.accepted_entries ?? 0;
-  const totalPaid = campaign.reward_amount * acceptedEntries;
 
   // Supabase's embedded-relation typing can surface this as either a single
   // object or an array depending on inferred cardinality — normalise
@@ -106,10 +105,38 @@ export default async function AdminCampaignDetailPage({
       walletAddress: e.wallet_address,
       paymentMethod: e.payment_method,
       status: e.status,
+      payoutStatus: e.payout_status,
       reviewNote: e.review_note,
       submittedAt: e.submitted_at,
     };
   });
+
+  // Two honest numbers instead of one that overclaimed. The old single
+  // "total paid" figure was reward × accepted-count — a calculation of what
+  // was OWED, labeled as if the money had already moved. It hadn't; this
+  // platform has no payment rail of its own, the real transfer happens
+  // manually, off-platform, whenever the admin sends crypto after exporting
+  // the accepted-wallets CSV. Flagged directly by the client, correctly.
+  //
+  // Pending Payout — accepted entries NOT YET marked paid. This is
+  // specifically the unpaid subset, not every accepted entry — an earlier
+  // pass of this feature used "every accepted entry, paid or not" for this
+  // figure, which was corrected after a direct answer clarified the actual
+  // intent: this number should represent money still owed right now, not a
+  // running total of all approved work ever. If an entry is later marked
+  // unpaid again (see the payout-status toggle), it correctly reappears
+  // here — this recalculates fresh from current state every render, not
+  // from history.
+  // Total Disbursed — only entries an admin has explicitly confirmed paid
+  // (payout_status = 'paid'). Starts at $0 and only grows on a real click.
+  const paidEntries = entries.filter(
+    (e) => e.status === "accepted" && e.payoutStatus === "paid",
+  ).length;
+  const unpaidAcceptedEntries = entries.filter(
+    (e) => e.status === "accepted" && e.payoutStatus === "unpaid",
+  ).length;
+  const totalPendingPayout = campaign.reward_amount * unpaidAcceptedEntries;
+  const totalDisbursed = campaign.reward_amount * paidEntries;
 
   const requiresApplication = campaign.campaign_type === "application_required";
 
@@ -190,13 +217,18 @@ export default async function AdminCampaignDetailPage({
                 </>
               )}
             </p>
-            {/* Cost tracking — reward × accepted entries. Pure display math
-                from data get_campaign_capacity() already returns; no new
-                schema needed for this one. */}
-            <p className="mt-1 font-display text-2xl text-gold">
-              ${totalPaid.toLocaleString()}{" "}
-              <span className="font-body text-sm text-slate">total paid</span>
-            </p>
+            {/* Two figures now instead of one — see the comment on
+                totalPendingPayout/totalDisbursed above for why. */}
+            <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
+              <p className="font-display text-2xl text-gold">
+                ${totalPendingPayout.toLocaleString()}{" "}
+                <span className="font-body text-sm text-slate">pending payout</span>
+              </p>
+              <p className="font-display text-2xl text-white">
+                ${totalDisbursed.toLocaleString()}{" "}
+                <span className="font-body text-sm text-slate">total disbursed</span>
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-col items-start gap-4 sm:items-end">

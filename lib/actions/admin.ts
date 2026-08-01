@@ -9,6 +9,7 @@ import {
   campaignSubmissionSchema,
   campaignReferenceSchema,
   campaignEditSubmissionSchema,
+  payoutStatusSchema,
   deleteCampaignSchema,
   setMemberRoleSchema,
   reviewApplicationSchema,
@@ -42,6 +43,32 @@ export async function reviewCampaignEntry(input: unknown): Promise<ActionResult>
     p_entry_id: parsed.data.entryId,
     p_status: parsed.data.status,
     p_review_note: parsed.data.reviewNote ?? null,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/campaign");
+  return { ok: true };
+}
+
+/**
+ * setEntryPayoutStatus
+ * ----------------------
+ * "Mark as Paid" / its undo. The actual guarantee — an entry can only be
+ * marked paid if it's genuinely accepted — lives in the RPC (migration 12),
+ * enforced at the database regardless of what the UI does or doesn't show.
+ * This function's only job is validating shape and surfacing whatever the
+ * database says, same as every other action here.
+ */
+export async function setEntryPayoutStatus(input: unknown): Promise<ActionResult> {
+  const parsed = payoutStatusSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.rpc("set_entry_payout_status", {
+    p_entry_id: parsed.data.entryId,
+    p_payout_status: parsed.data.payoutStatus,
   });
 
   if (error) return { ok: false, error: error.message };
@@ -162,6 +189,27 @@ export async function getCampaignWalletExport(campaignId: string): Promise<Walle
 
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.rpc("export_accepted_campaign_wallets", {
+    p_campaign_id: parsedId.data,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, rows: (data ?? []) as WalletExportRow[] };
+}
+
+/**
+ * getUnpaidWalletExport
+ * -----------------------
+ * Same shape as getCampaignWalletExport above, filtered server-side (in the
+ * RPC, not here) to only entries not yet marked paid — for running an actual
+ * payout batch, as distinct from the full accepted list kept for
+ * record-keeping.
+ */
+export async function getUnpaidWalletExport(campaignId: string): Promise<WalletExportResult> {
+  const parsedId = z.string().uuid().safeParse(campaignId);
+  if (!parsedId.success) return { ok: false, error: "Invalid campaign." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("export_unpaid_campaign_wallets", {
     p_campaign_id: parsedId.data,
   });
 
