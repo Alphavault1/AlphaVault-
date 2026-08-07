@@ -162,8 +162,8 @@ export interface SocialLink {
 }
 
 export const SOCIAL_LINKS: readonly SocialLink[] = [
-  { label: "X", href: "https://x.com" },
-  { label: "Telegram", href: "https://telegram.org" },
+  { label: "X", href: "https://x.com/_alphavault?s=20" },
+  { label: "Telegram", href: "https://t.me/+CR_tipU_44c0ZGFk" },
 ] as const;
 
 /**
@@ -172,4 +172,4 @@ export const SOCIAL_LINKS: readonly SocialLink[] = [
  * file. The "Gating Mechanism" nav link still points at the #gating section,
  * so the two are genuinely distinct destinations.
  */
-export const TELEGRAM_URL = "https://telegram.org";
+export const TELEGRAM_URL = "https://t.me/+CR_tipU_44c0ZGFk";
