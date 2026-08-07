@@ -1,6 +1,13 @@
 "use client";
 
-import { useState } from "react";
+/**
+ * OPTIMISTIC UPDATE — see the full explanation in MemberTable.tsx. Same
+ * root cause (button re-enabled before router.refresh() visually landed,
+ * inviting repeat clicks), same fix (patch local state the instant the
+ * action succeeds, independent of refresh timing).
+ */
+
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
@@ -16,14 +23,19 @@ export interface ReviewApplicationRow {
 
 export function ApplicationReviewTable({ applications }: { applications: ReviewApplicationRow[] }) {
   const router = useRouter();
+  const [localApplications, setLocalApplications] = useState(applications);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    setLocalApplications(applications);
+  }, [applications]);
+
   const normalizedSearch = search.trim().replace(/^@/, "").toLowerCase();
   const filteredApplications = normalizedSearch
-    ? applications.filter((a) => a.xHandle.toLowerCase().includes(normalizedSearch))
-    : applications;
+    ? localApplications.filter((a) => a.xHandle.toLowerCase().includes(normalizedSearch))
+    : localApplications;
 
   async function handleReview(applicationId: string, status: "approved" | "rejected") {
     if (status === "rejected") {
@@ -44,10 +56,13 @@ export function ApplicationReviewTable({ applications }: { applications: ReviewA
       return;
     }
 
+    setLocalApplications((prev) =>
+      prev.map((a) => (a.id === applicationId ? { ...a, status } : a)),
+    );
     router.refresh();
   }
 
-  if (applications.length === 0) {
+  if (localApplications.length === 0) {
     return (
       <p className="rounded-2xl border border-white/5 bg-surface-900 p-8 text-center font-body text-slate">
         No applications yet.
@@ -112,7 +127,11 @@ export function ApplicationReviewTable({ applications }: { applications: ReviewA
                 disabled={pendingId === application.id}
                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Reject
+                {pendingId === application.id ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  "Reject"
+                )}
               </button>
             </div>
           )}

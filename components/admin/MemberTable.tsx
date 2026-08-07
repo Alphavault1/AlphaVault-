@@ -10,9 +10,29 @@
  * self-targeting and admin-targeting). Hiding the control entirely, rather
  * than showing a button that's guaranteed to return an error, is the better
  * UX for something that can never succeed.
+ *
+ * OPTIMISTIC UPDATES — why this file now holds its own copy of `members`:
+ * Reported bug: clicking Approve/Reject took 2-4 clicks to "work." Root
+ * cause: every handler here disabled its button, awaited the server action,
+ * then IMMEDIATELY re-enabled the button and called router.refresh() —
+ * which returns void and cannot be awaited (confirmed against Next's own
+ * type definitions: `refresh(): void`). That means the button became
+ * clickable again well before the page's visible data had actually
+ * refreshed, so a second click looked necessary even though the first one
+ * had already succeeded.
+ *
+ * The "obvious" fix (wrap refresh in useTransition and gate on isPending)
+ * was deliberately NOT used here — it has a confirmed, currently open
+ * Next.js regression (vercel/next.js#86055) where isPending can get stuck
+ * true forever in PRODUCTION builds specifically, which is worse than the
+ * bug being fixed. Instead: patch the affected member's fields in local
+ * state the instant the action succeeds, independent of refresh timing
+ * entirely. router.refresh() still runs afterward to reconcile with the
+ * server (e.g. if another admin changed something else), but the person
+ * who clicked never has to wait for it to see their own click take effect.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
@@ -37,17 +57,32 @@ export function MemberTable({
   currentUserId: string;
 }) {
   const router = useRouter();
+  const [localMembers, setLocalMembers] = useState(members);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [banDays, setBanDays] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
 
+  // Reconciles with fresh server data once router.refresh() actually lands.
+  // Safe to just overwrite: by the time this fires after a successful
+  // action, the optimistic patch below already set the same target value,
+  // so this just re-confirms it rather than fighting it. If the change came
+  // from somewhere else entirely (another admin, a manual reload), this is
+  // exactly the mechanism that should bring it in.
+  useEffect(() => {
+    setLocalMembers(members);
+  }, [members]);
+
   // Normalized the same way X handles are treated everywhere else on this
   // site — leading "@" ignored, case-insensitive.
   const normalizedSearch = search.trim().replace(/^@/, "").toLowerCase();
   const filteredMembers = normalizedSearch
-    ? members.filter((m) => m.xHandle.toLowerCase().includes(normalizedSearch))
-    : members;
+    ? localMembers.filter((m) => m.xHandle.toLowerCase().includes(normalizedSearch))
+    : localMembers;
+
+  function patchMember(profileId: string, patch: Partial<MemberRow>) {
+    setLocalMembers((prev) => prev.map((m) => (m.id === profileId ? { ...m, ...patch } : m)));
+  }
 
   async function handleVerify(profileId: string, status: (typeof VERIFICATION_STATUSES)[number]) {
     setError(null);
@@ -58,6 +93,7 @@ export function MemberTable({
       setError(result.error);
       return;
     }
+    patchMember(profileId, { status });
     router.refresh();
   }
 
@@ -74,6 +110,12 @@ export function MemberTable({
       setError(result.error);
       return;
     }
+    // Approximate — refresh() will bring the server's exact timestamp
+    // moments later. Good enough for "is this member currently banned,
+    // yes or no," which is the only thing the UI actually branches on.
+    patchMember(profileId, {
+      bannedUntil: days > 0 ? new Date(Date.now() + days * 86_400_000).toISOString() : null,
+    });
     router.refresh();
   }
 
@@ -95,6 +137,7 @@ export function MemberTable({
       setError(result.error);
       return;
     }
+    patchMember(profileId, { role });
     router.refresh();
   }
 
@@ -165,7 +208,7 @@ export function MemberTable({
                         : "border-white/15 text-slate hover:border-white/30 hover:text-white"
                     }`}
                   >
-                    {s}
+                    {busy ? <Loader2 size={12} className="animate-spin" /> : s}
                   </button>
                 ))}
 
@@ -200,7 +243,7 @@ export function MemberTable({
                       disabled={busy || !banDays[member.id]}
                       className="inline-flex items-center gap-1 rounded-full border border-white/15 px-3 py-1.5 font-body text-xs text-white transition-colors hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Ban
+                      {busy ? <Loader2 size={12} className="animate-spin" /> : "Ban"}
                     </button>
                   </div>
                 )}
@@ -211,7 +254,7 @@ export function MemberTable({
                   disabled={busy}
                   className="inline-flex items-center gap-1 rounded-full border border-gold/30 px-3 py-1.5 font-body text-xs text-gold transition-colors hover:border-gold/60 hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Make admin
+                  {busy ? <Loader2 size={12} className="animate-spin" /> : "Make admin"}
                 </button>
               </div>
             )}

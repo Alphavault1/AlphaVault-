@@ -11,9 +11,15 @@
  * lightweight, appropriate amount of friction for the one action that has no
  * undo and directly affects someone's standing, without building a custom
  * confirmation modal for an internal admin tool.
+ *
+ * OPTIMISTIC UPDATE — see the full explanation in MemberTable.tsx. This was
+ * very likely the exact cause of the earlier "Mark as Paid took nearly a
+ * minute" report too: the button re-enabled the instant its own request
+ * resolved, well before router.refresh() had visually updated the pill —
+ * so it read as "stuck," when the click had actually already succeeded.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Loader2, Search, DollarSign } from "lucide-react";
 import { StatusBadge } from "@/components/campaign/StatusBadge";
@@ -34,23 +40,28 @@ export interface ReviewEntryRow {
 
 export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
   const router = useRouter();
+  const [localEntries, setLocalEntries] = useState(entries);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setLocalEntries(entries);
+  }, [entries]);
 
   // Matches by handle, submitted link, OR wallet — any one of the three is
   // enough, since an admin might be searching from any of them (e.g.
   // pasting in a wallet address to find who it belongs to).
   const normalizedSearch = search.trim().toLowerCase();
   const filteredEntries = normalizedSearch
-    ? entries.filter(
+    ? localEntries.filter(
         (e) =>
           e.xHandle.toLowerCase().includes(normalizedSearch) ||
           e.submissionUrl.toLowerCase().includes(normalizedSearch) ||
           e.walletAddress.toLowerCase().includes(normalizedSearch) ||
           paymentMethodLabel(e.paymentMethod).toLowerCase().includes(normalizedSearch),
       )
-    : entries;
+    : localEntries;
 
   async function handleReview(entryId: string, status: "accepted" | "rejected") {
     if (status === "rejected") {
@@ -71,6 +82,7 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
       return;
     }
 
+    setLocalEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, status } : e)));
     router.refresh();
   }
 
@@ -95,10 +107,13 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
       return;
     }
 
+    setLocalEntries((prev) =>
+      prev.map((e) => (e.id === entryId ? { ...e, payoutStatus: nextStatus } : e)),
+    );
     router.refresh();
   }
 
-  if (entries.length === 0) {
+  if (localEntries.length === 0) {
     return (
       <p className="rounded-2xl border border-white/5 bg-surface-900 p-8 text-center font-body text-slate">
         No entries yet.
@@ -140,9 +155,6 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
             <div className="flex items-center gap-3">
               <p className="font-body font-semibold text-white">@{entry.xHandle}</p>
               <StatusBadge status={entry.status} />
-              {/* Payout pill — only meaningful for accepted entries. Nothing
-                  was ever owed for a pending or rejected one, so no pill
-                  shows for those. */}
               {entry.status === "accepted" && (
                 <span
                   className={`rounded-full px-2.5 py-0.5 font-body text-xs font-medium ${
@@ -188,7 +200,7 @@ export function EntryReviewTable({ entries }: { entries: ReviewEntryRow[] }) {
                 disabled={pendingId === entry.id}
                 className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:border-red-500/40 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Reject
+                {pendingId === entry.id ? <Loader2 size={14} className="animate-spin" /> : "Reject"}
               </button>
             </div>
           )}
